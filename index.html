@@ -747,7 +747,7 @@
       <span class="nav-icon">📊</span>
       <span>Dashboard</span>
     </button>
-    <button class="nav-item" id="nav-data" onclick="showPage('data')">
+    <button class="nav-item" id="nav-data" onclick="showPage('data')" style="display:none">
       <span class="nav-icon">📋</span>
       <span>Data Pengajuan</span>
     </button>
@@ -755,6 +755,15 @@
     <button class="nav-item" id="nav-kalender" onclick="showPage('kalender')">
       <span class="nav-icon">📅</span>
       <span>Kalender Kerja</span>
+    </button>
+    <div class="nav-label" id="nav-label-akses">Akses</div>
+    <button class="nav-item" id="btn-nav-login-pp" onclick="openPublicLoginModal('pp')" style="background:rgba(59,130,246,0.15);border-left:3px solid #3b82f6">
+      <span class="nav-icon">🔑</span>
+      <span>Login PP / Admin</span>
+    </button>
+    <button class="nav-item" id="btn-nav-pengajuan" onclick="openPublicLoginModal('opd')" style="background:rgba(16,185,129,0.15);border-left:3px solid #10b981">
+      <span class="nav-icon">📤</span>
+      <span>Pengajuan E-Purchasing</span>
     </button>
     <div class="nav-label">Lainnya</div>
     <button class="nav-item" onclick="window.open('https://lookerstudio.google.com/reporting/77b6cc2f-3db4-4ae8-b3e9-a30e3983f116','_blank')">
@@ -768,6 +777,10 @@
     <button class="nav-item" id="nav-settings" onclick="showPage('settings')" style="display:none">
       <span class="nav-icon">⚙️</span>
       <span>Settings</span>
+    </button>
+    <button class="nav-item" id="btn-nav-logout" onclick="doAppLogout()" style="display:none;color:rgba(255,120,120,0.9)">
+      <span class="nav-icon">🚪</span>
+      <span>Logout</span>
     </button>
   </nav>
   <div class="nav-user-info" id="nav-user-info" style="margin:0 12px 8px;padding:10px 12px;background:rgba(255,255,255,0.1);border-radius:8px;font-size:12px;color:rgba(255,255,255,0.8);display:none">
@@ -830,7 +843,7 @@
           <div class="card-title">Pengajuan Terbaru</div>
           <div class="card-sub" style="margin-bottom:0">10 pengajuan terakhir masuk</div>
         </div>
-        <button class="btn btn-outline btn-sm" onclick="showPage('data')">Lihat Semua →</button>
+        <button class="btn btn-outline btn-sm" id="btn-lihat-semua" onclick="showPage('data')" style="display:none">Lihat Semua →</button>
       </div>
       <div class="table-wrap">
         <table id="recent-table">
@@ -935,74 +948,193 @@
 
   <!-- PAGE 3: KALENDER KERJA -->
   <div class="page" id="page-kalender">
-    <div class="calendar-controls">
-      <div class="calendar-nav">
-        <button class="cal-btn" onclick="changeMonth(-1)">‹</button>
-        <div class="cal-month-label" id="cal-month-label"></div>
-        <button class="cal-btn" onclick="changeMonth(1)">›</button>
-        <button class="btn btn-outline btn-sm" onclick="goToToday()">Hari Ini</button>
+    <!-- TAB SWITCHER -->
+    <div style="display:flex;gap:0;margin-bottom:16px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:4px;width:fit-content">
+      <button id="tab-btn-bulanan" onclick="switchKalTab('bulanan')"
+        style="padding:7px 20px;border-radius:7px;border:none;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;background:var(--primary);color:#fff;transition:all 0.2s">
+        📅 Kalender Bulanan
+      </button>
+      <button id="tab-btn-gantt" onclick="switchKalTab('gantt')"
+        style="padding:7px 20px;border-radius:7px;border:none;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;background:transparent;color:var(--text2);transition:all 0.2s">
+        📊 Jadwal Pengadaan
+      </button>
+    </div>
+
+    <!-- ====== TAB: KALENDER BULANAN — PUBLIK ====== -->
+    <div id="kal-tab-bulanan">
+      <div class="calendar-controls">
+        <div class="calendar-nav">
+          <button class="cal-btn" onclick="changeMonth(-1)">‹</button>
+          <div class="cal-month-label" id="cal-month-label"></div>
+          <button class="cal-btn" onclick="changeMonth(1)">›</button>
+          <button class="btn btn-outline btn-sm" onclick="goToToday()">Hari Ini</button>
+        </div>
+        <div class="calendar-filters">
+          <div class="filter-group">
+            <div class="filter-label">Pejabat Pengadaan</div>
+            <select id="cal-filter-pejabat" onchange="renderCalendar()">
+              <option value="">Semua Pejabat</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <div class="filter-label">OPD / Instansi</div>
+            <select id="cal-filter-opd" onchange="renderCalendar()">
+              <option value="">Semua OPD</option>
+            </select>
+          </div>
+        </div>
       </div>
-      <div class="calendar-filters">
-        <div class="filter-group">
-          <div class="filter-label">Pejabat Pengadaan</div>
-          <select id="cal-filter-pejabat" onchange="renderCalendar()">
-            <option value="">Semua Pejabat</option>
-          </select>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px">
+        <div class="legend" style="margin-bottom:0">
+          <div class="legend-item"><div class="legend-dot" style="background:var(--success)"></div>Selesai Pengadaan</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--info)"></div>Sedang Direviu</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--warning)"></div>Perlu Perbaikan</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--danger)"></div>Ditolak</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--purple)"></div>Proses e-Purchasing</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--text3)"></div>Tanpa Status</div>
         </div>
-        <div class="filter-group">
-          <div class="filter-label">OPD / Instansi</div>
-          <select id="cal-filter-opd" onchange="renderCalendar()">
-            <option value="">Semua OPD</option>
-          </select>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+          <span style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px">Tampilkan:</span>
+          <div style="display:flex;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:3px;gap:2px">
+            <button id="cal-mode-paket" onclick="setCalMode('paket')"
+              style="padding:5px 12px;border-radius:6px;border:none;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;background:var(--primary);color:#fff;transition:all 0.2s">Nama Paket</button>
+            <button id="cal-mode-dinas" onclick="setCalMode('dinas')"
+              style="padding:5px 12px;border-radius:6px;border:none;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;background:transparent;color:var(--text2);transition:all 0.2s">Dinas</button>
+            <button id="cal-mode-pejabat" onclick="setCalMode('pejabat')"
+              style="padding:5px 12px;border-radius:6px;border:none;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;background:transparent;color:var(--text2);transition:all 0.2s">Pejabat Pengadaan</button>
+          </div>
         </div>
+      </div>
+
+      <div class="calendar-grid">
+        <div class="cal-days-header">
+          <div class="cal-day-name">Min</div><div class="cal-day-name">Sen</div>
+          <div class="cal-day-name">Sel</div><div class="cal-day-name">Rab</div>
+          <div class="cal-day-name">Kam</div><div class="cal-day-name">Jum</div>
+          <div class="cal-day-name">Sab</div>
+        </div>
+        <div class="cal-body" id="cal-body"></div>
       </div>
     </div>
 
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px">
-      <!-- Legend -->
-      <div class="legend" style="margin-bottom:0">
-        <div class="legend-item"><div class="legend-dot" style="background:var(--success)"></div>Selesai Pengadaan</div>
-        <div class="legend-item"><div class="legend-dot" style="background:var(--info)"></div>Sedang Direviu</div>
-        <div class="legend-item"><div class="legend-dot" style="background:var(--warning)"></div>Perlu Perbaikan</div>
-        <div class="legend-item"><div class="legend-dot" style="background:var(--danger)"></div>Ditolak</div>
-        <div class="legend-item"><div class="legend-dot" style="background:var(--purple)"></div>Proses e-Purchasing</div>
-        <div class="legend-item"><div class="legend-dot" style="background:var(--text3)"></div>Tanpa Status</div>
+    <!-- ====== TAB: JADWAL PENGADAAN (Gantt) — LOGIN REQUIRED ====== -->
+    <div id="kal-tab-gantt" style="display:none">
+
+      <!-- Notice untuk publik -->
+      <div id="gantt-login-notice" style="display:none;background:linear-gradient(135deg,#eff6ff,#dbeafe);border:1px solid #bfdbfe;border-radius:10px;padding:16px 20px;margin-bottom:16px;text-align:center">
+        <div style="font-size:32px;margin-bottom:8px">🔒</div>
+        <div style="font-size:14px;font-weight:700;color:#1e40af;margin-bottom:4px">Jadwal Pengadaan hanya tersedia untuk PP/Admin</div>
+        <div style="font-size:12px;color:#3b82f6;margin-bottom:14px">Login untuk melihat dan mengelola jadwal pengadaan</div>
+        <button class="btn btn-primary btn-sm" onclick="openPublicLoginModal('pp')">🔑 Login Sekarang</button>
       </div>
-      <!-- Display Mode Toggle -->
-      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-        <span style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px">Tampilkan:</span>
-        <div style="display:flex;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:3px;gap:2px">
-          <button id="cal-mode-paket" onclick="setCalMode('paket')"
-            style="padding:5px 12px;border-radius:6px;border:none;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;background:var(--primary);color:#fff;transition:all 0.2s">
-            Nama Paket
-          </button>
-          <button id="cal-mode-dinas" onclick="setCalMode('dinas')"
-            style="padding:5px 12px;border-radius:6px;border:none;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;background:transparent;color:var(--text2);transition:all 0.2s">
-            Dinas
-          </button>
-          <button id="cal-mode-pejabat" onclick="setCalMode('pejabat')"
-            style="padding:5px 12px;border-radius:6px;border:none;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;background:transparent;color:var(--text2);transition:all 0.2s">
-            Pejabat Pengadaan
-          </button>
+
+      <!-- Konten Gantt (hanya saat login) -->
+      <div id="gantt-authenticated-content">
+        <!-- Filter bar -->
+        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:16px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 16px">
+          <div style="flex:1;min-width:140px">
+            <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:5px">Nama Paket</div>
+            <input type="text" id="kal-filter-paket" class="form-control" placeholder="Cari nama paket..." oninput="applyKalFilter()" style="font-size:13px">
+          </div>
+          <div style="flex:1;min-width:120px">
+            <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:5px">Metode</div>
+            <select id="kal-filter-metode" class="form-control" onchange="applyKalFilter()" style="font-size:13px">
+              <option value="">Semua Metode</option>
+              <option value="E-Purchasing">E-Purchasing</option>
+              <option value="Pengadaan Langsung">Pengadaan Langsung</option>
+            </select>
+          </div>
+          <div style="flex:1;min-width:130px">
+            <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:5px">Dinas / OPD</div>
+            <select id="kal-filter-dinas" class="form-control" onchange="applyKalFilter()" style="font-size:13px">
+              <option value="">Semua Dinas</option>
+            </select>
+          </div>
+          <div style="flex:1;min-width:130px">
+            <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:5px">Pejabat Pengadaan</div>
+            <select id="kal-filter-pejabat-gantt" class="form-control" onchange="applyKalFilter()" style="font-size:13px">
+              <option value="">Semua PP</option>
+            </select>
+          </div>
+          <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+            <button class="btn btn-outline btn-sm" onclick="resetKalFilter()">🔄 Reset</button>
+            <button class="btn btn-primary btn-sm" id="btn-inject-cal" onclick="openInjectCalModal()">📆 Google Calendar</button>
+            <button class="btn btn-sm" id="btn-tambah-spse" onclick="toggleSpsePanel()" style="background:var(--success);color:#fff">➕ Tambah Jadwal</button>
+          </div>
+        </div>
+
+        <!-- SPSE Input Panel -->
+        <div id="spse-panel" style="display:none;background:#fff;border:2px solid var(--primary);border-radius:12px;padding:18px;margin-bottom:16px">
+          <div style="font-weight:700;color:var(--primary);margin-bottom:12px;font-size:14px">📝 Input Jadwal dari SPSE / Manual</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:12px">
+            <div>
+              <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:5px">Nama Paket *</div>
+              <input type="text" id="spse-nama-paket" class="form-control" placeholder="Nama paket pengadaan" style="font-size:13px">
+            </div>
+            <div>
+              <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:5px">Metode</div>
+              <select id="spse-metode" class="form-control" style="font-size:13px">
+                <option value="Pengadaan Langsung">Pengadaan Langsung</option>
+                <option value="E-Purchasing">E-Purchasing</option>
+              </select>
+            </div>
+            <div>
+              <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:5px">Dinas / OPD</div>
+              <input type="text" id="spse-dinas" class="form-control" placeholder="Nama dinas" style="font-size:13px">
+            </div>
+            <div>
+              <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:5px">Pejabat Pengadaan</div>
+              <input type="text" id="spse-pejabat" class="form-control" placeholder="Nama pejabat" style="font-size:13px">
+            </div>
+          </div>
+          <div style="margin-bottom:12px">
+            <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:5px">Paste Jadwal (Tahap · Tanggal Mulai · Tanggal Selesai)</div>
+            <textarea id="spse-text" class="form-control" rows="5"
+              placeholder="Bisa paste langsung dari SPSE, contoh:&#10;Upload Dokumen Penawaran   13 Maret 2026 10:00   16 Maret 2026 08:59&#10;Pembukaan Dokumen Penawaran   16 Maret 2026 09:00   16 Maret 2026 09:04&#10;&#10;Atau format manual:&#10;Pengumuman Pengadaan · 2026-01-10 · 2026-01-12"
+              style="font-size:12px;font-family:monospace" oninput="prosesSPSE()"></textarea>
+          </div>
+          <div id="spse-preview" style="display:none;margin-bottom:12px">
+            <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:6px">Preview Jadwal Terdeteksi</div>
+            <div id="spse-preview-table" style="font-size:12px;border:1px solid var(--border);border-radius:8px;overflow:hidden"></div>
+          </div>
+          <div id="spse-panel-error" style="display:none;color:var(--danger);font-size:12px;margin-bottom:8px;background:var(--danger-bg);padding:8px 10px;border-radius:6px"></div>
+          <div style="display:flex;gap:10px">
+            <button class="btn btn-primary btn-sm" onclick="simpanJadwalSPSE()">💾 Simpan Jadwal</button>
+            <button class="btn btn-outline btn-sm" onclick="toggleSpsePanel()">✕ Tutup</button>
+          </div>
+        </div>
+
+        <!-- Gantt Navigation -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="btn btn-outline btn-sm" onclick="ganttNav(-1)">◀ Sebelumnya</button>
+            <button class="btn btn-outline btn-sm" onclick="ganttNav(0)">📍 Hari Ini</button>
+            <button class="btn btn-outline btn-sm" onclick="ganttNav(1)">Berikutnya ▶</button>
+          </div>
+          <div id="gantt-range-label" style="font-size:13px;font-weight:600;color:var(--text2)"></div>
+          <div style="display:flex;gap:12px;font-size:11px;color:var(--text3);flex-wrap:wrap">
+            <span style="display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:12px;height:12px;background:#3b82f6;border-radius:2px"></span>Berjalan</span>
+            <span style="display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:12px;height:12px;background:#10b981;border-radius:2px"></span>Selesai</span>
+            <span style="display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:12px;height:12px;background:#f59e0b;border-radius:2px"></span>Akan Datang</span>
+            <span style="display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:12px;height:12px;background:#8b5cf6;border-radius:2px"></span>E-Purchasing</span>
+          </div>
+        </div>
+
+        <!-- Gantt Chart Container -->
+        <div style="background:#fff;border:1px solid var(--border);border-radius:12px;overflow:auto;min-height:300px;padding:12px" id="gantt-container">
+          <div id="gantt-loading" style="text-align:center;padding:60px;color:var(--text3);font-size:14px">⏳ Memuat data jadwal pengadaan...</div>
+          <div id="gantt-empty" style="display:none;text-align:center;padding:60px;color:var(--text3)">
+            <div style="font-size:40px;margin-bottom:12px">📭</div>
+            <div style="font-size:15px;font-weight:600;color:var(--text2)">Belum ada jadwal pengadaan</div>
+            <div style="font-size:13px;margin-top:6px">Klik <strong>Tambah Jadwal</strong> untuk menambahkan</div>
+          </div>
         </div>
       </div>
-    </div>
-
-    <div class="calendar-grid">
-      <div class="cal-days-header">
-        <div class="cal-day-name">Min</div>
-        <div class="cal-day-name">Sen</div>
-        <div class="cal-day-name">Sel</div>
-        <div class="cal-day-name">Rab</div>
-        <div class="cal-day-name">Kam</div>
-        <div class="cal-day-name">Jum</div>
-        <div class="cal-day-name">Sab</div>
-      </div>
-      <div class="cal-body" id="cal-body"></div>
     </div>
   </div>
 
-  <!-- PAGE 5: SETTINGS -->
+
   <div class="page" id="page-settings">
     <div style="max-width:600px">
       <div class="chart-card" style="margin-bottom:16px">
@@ -1039,7 +1171,7 @@
 </div>
 
 <!-- LOGIN OVERLAY -->
-<div id="login-overlay" style="position:fixed;inset:0;background:linear-gradient(135deg,#1e3a8a 0%,#1e40af 50%,#2563eb 100%);z-index:999;display:flex;align-items:center;justify-content:center;padding:20px">
+<div id="login-overlay" style="position:fixed;inset:0;background:linear-gradient(135deg,#1e3a8a 0%,#1e40af 50%,#2563eb 100%);z-index:999;display:none;align-items:center;justify-content:center;padding:20px">
   <div style="background:#fff;border-radius:20px;width:100%;max-width:440px;box-shadow:0 25px 50px rgba(0,0,0,0.3);overflow:hidden">
     <div style="background:linear-gradient(135deg,#1e40af,#3b82f6);padding:28px 32px;text-align:center">
       <div style="font-size:40px;margin-bottom:8px">🏛️</div>
@@ -1067,6 +1199,42 @@
       </button>
       <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);font-size:12px;color:var(--text3);text-align:center;line-height:1.6">
         Belum punya akun? Hubungi <strong>Pejabat Pengadaan</strong> untuk mendapatkan username & password.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: PUBLIC LOGIN (POPUP) -->
+<div id="public-login-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:998;display:none;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this) closePublicLoginModal()">
+  <div style="background:#fff;border-radius:16px;width:100%;max-width:400px;box-shadow:0 20px 40px rgba(0,0,0,0.3);overflow:hidden">
+    <div id="pub-login-header" style="background:linear-gradient(135deg,#1e40af,#3b82f6);padding:20px 24px;display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div id="pub-login-title" style="color:#fff;font-size:16px;font-weight:800">🔑 Login Pejabat Pengadaan</div>
+        <div style="color:rgba(255,255,255,0.75);font-size:11px;margin-top:3px">E-Purchasing BPBJ Kota Surakarta</div>
+      </div>
+      <button onclick="closePublicLoginModal()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">×</button>
+    </div>
+    <div style="padding:22px 24px">
+      <div style="margin-bottom:14px">
+        <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px">Username</div>
+        <input type="text" id="pub-login-username" class="form-control" placeholder="Masukkan username..."
+          style="font-size:14px" onkeydown="if(event.key==='Enter') document.getElementById('pub-login-password').focus()">
+      </div>
+      <div style="margin-bottom:8px">
+        <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px">Password</div>
+        <div style="position:relative">
+          <input type="password" id="pub-login-password" class="form-control" placeholder="Masukkan password..."
+            style="font-size:14px;padding-right:44px" onkeydown="if(event.key==='Enter') doPublicLogin()">
+          <button type="button" onclick="togglePwdVis('pub-login-password')"
+            style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px">👁️</button>
+        </div>
+      </div>
+      <div id="pub-login-error" style="color:var(--danger);font-size:12px;margin-bottom:12px;display:none;background:var(--danger-bg);padding:8px 10px;border-radius:6px">❌ Username atau password salah</div>
+      <button class="btn btn-primary" id="pub-login-btn" onclick="doPublicLogin()" style="width:100%;padding:11px;font-size:14px;justify-content:center">
+        🔓 Masuk
+      </button>
+      <div style="margin-top:14px;font-size:11px;color:var(--text3);text-align:center">
+        Hubungi BPBJ Surakarta untuk mendapatkan akun.
       </div>
     </div>
   </div>
@@ -1380,11 +1548,12 @@ function doAppLogout() {
   isAuthenticated = false;
   updateEditVisibility();
   updateNavForUser();
-  document.getElementById('login-overlay').style.display = 'flex';
+  // Jangan tampilkan login-overlay — app tetap public
   document.getElementById('login-username').value = '';
   document.getElementById('login-password').value = '';
   document.getElementById('login-error').style.display = 'none';
   showPage('dashboard');
+  showToast('👋 Anda telah logout', '');
 }
 
 function doLogin() {
@@ -1442,13 +1611,22 @@ function doLogin() {
 
 function loginSuccess() {
   document.getElementById('login-overlay').style.display = 'none';
+  closePublicLoginModal();
+  if (currentUser.role === 'superadmin' || currentUser.role === 'pp') {
+    isAuthenticated = true;
+  }
   updateEditVisibility();
-  updateNavForUser();
-  // Filter data sesuai instansi user (PP & OPD hanya lihat instansinya)
+  updateNavForUser(); // includes _updateKalenderAuthState
   const opdSel = document.getElementById('filter-opd');
-  if (opdSel && currentUser.instansi) {
+  if (opdSel && currentUser.instansi && currentUser.role !== 'superadmin') {
     opdSel.value = currentUser.instansi;
     applyFilters();
+  }
+  // Jika sedang di halaman kalender tab bulanan, render
+  const page = document.querySelector('.page.active');
+  if (page && page.id === 'page-kalender') {
+    if (_kalTabActive === 'bulanan') renderCalendar();
+    else loadKalenderData();
   }
   showToast('✅ Selamat datang, ' + currentUser.displayName + '!', 'success');
 }
@@ -1457,13 +1635,38 @@ function updateNavForUser() {
   const userInfo = document.getElementById('nav-user-info');
   const topbarUser = document.getElementById('topbar-user');
   const settingsNav = document.getElementById('nav-settings');
+  const btnNavLogout = document.getElementById('btn-nav-logout');
+  const navLabelAkses = document.getElementById('nav-label-akses');
+  const btnNavLoginPP = document.getElementById('btn-nav-login-pp');
+  const btnNavPengajuan = document.getElementById('btn-nav-pengajuan');
+  const navData = document.getElementById('nav-data');
+  const btnLihatSemua = document.getElementById('btn-lihat-semua');
+
   if (!currentUser) {
     if (userInfo) userInfo.style.display = 'none';
     if (topbarUser) topbarUser.style.display = 'none';
     if (settingsNav) settingsNav.style.display = 'none';
+    if (btnNavLogout) btnNavLogout.style.display = 'none';
+    if (navLabelAkses) navLabelAkses.style.display = '';
+    if (btnNavLoginPP) btnNavLoginPP.style.display = '';
+    if (btnNavPengajuan) btnNavPengajuan.style.display = '';
+    if (navData) navData.style.display = 'none';
+    if (btnLihatSemua) btnLihatSemua.style.display = 'none';
+    _updateKalenderAuthState();
     return;
   }
-  const roleLabel = currentUser.role === 'pp' ? 'Pejabat Pengadaan' : 'OPD · ' + currentUser.displayName;
+  if (navLabelAkses) navLabelAkses.style.display = 'none';
+  if (btnNavLoginPP) btnNavLoginPP.style.display = 'none';
+  if (btnNavPengajuan) btnNavPengajuan.style.display = 'none';
+  if (btnNavLogout) btnNavLogout.style.display = '';
+  if (navData) navData.style.display = '';
+  if (btnLihatSemua) btnLihatSemua.style.display = '';
+
+  const role = currentUser.role;
+  const roleLabel = role === 'superadmin' ? 'Super Administrator'
+    : role === 'pp' ? 'Pejabat Pengadaan'
+    : 'OPD · ' + currentUser.displayName;
+
   if (userInfo) {
     userInfo.style.display = 'block';
     document.getElementById('nav-user-name').textContent = currentUser.displayName;
@@ -1471,32 +1674,38 @@ function updateNavForUser() {
   }
   if (topbarUser) {
     topbarUser.style.display = 'flex';
-    document.getElementById('topbar-user-icon').textContent = currentUser.role === 'pp' ? '🏛️' : '🏢';
+    document.getElementById('topbar-user-icon').textContent = role === 'superadmin' ? '👑' : role === 'pp' ? '🏛️' : '🏢';
     document.getElementById('topbar-user-label').textContent = currentUser.displayName;
   }
-  if (settingsNav) settingsNav.style.display = '';
-  // Update settings page
+  if (settingsNav) settingsNav.style.display = (role === 'pp' || role === 'superadmin') ? '' : 'none';
   const su = document.getElementById('settings-username-display');
   const sr = document.getElementById('settings-role-display');
   if (su) su.textContent = currentUser.username;
   if (sr) sr.textContent = roleLabel;
+  _updateKalenderAuthState();
+}
+
+function _updateKalenderAuthState() {
+  const notice  = document.getElementById('gantt-login-notice');
+  const content = document.getElementById('gantt-authenticated-content');
+  const loggedIn = !!currentUser;
+  if (notice)  notice.style.display  = loggedIn ? 'none' : 'block';
+  if (content) content.style.display = loggedIn ? 'block' : 'none';
 }
 
 function setRole(role) { if (role === 'pejabat') { isAuthenticated = true; } }
 function updateRoleBadge() {}
 function updateEditVisibility() {
   const table = document.querySelector('#page-data table');
-  if (!table) return;
-  // Tombol edit tampil hanya untuk PP yang sudah login
-  if (isAuthenticated) {
-    table.classList.remove('hide-edit');
-  } else {
-    table.classList.add('hide-edit');
+  const isPPOrAdmin = isAuthenticated || (currentUser && currentUser.role === 'superadmin');
+  if (table) {
+    if (isPPOrAdmin) table.classList.remove('hide-edit');
+    else table.classList.add('hide-edit');
   }
   const btnLogout = document.getElementById('btn-logout');
   const btnPwd    = document.getElementById('btn-change-pwd');
-  if (btnLogout) btnLogout.style.display = isAuthenticated ? '' : 'none';
-  if (btnPwd)    btnPwd.style.display    = isAuthenticated ? '' : 'none';
+  if (btnLogout) btnLogout.style.display = isPPOrAdmin ? '' : 'none';
+  if (btnPwd)    btnPwd.style.display    = isPPOrAdmin ? '' : 'none';
 }
 function populateLoginOPDSelect() {}
 
@@ -2919,6 +3128,12 @@ function closeModal(e) {
 // NAVIGATION
 // ============================================================
 function showPage(name) {
+  // Proteksi halaman Data Pengajuan — hanya untuk user yang sudah login
+  if (name === 'data' && !currentUser) {
+    openPublicLoginModal('pp');
+    return;
+  }
+
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const pg = document.getElementById('page-'+name);
   if (pg) pg.classList.add('active');
@@ -2929,8 +3144,7 @@ function showPage(name) {
   const titles = {
     dashboard: ['Dashboard Monitoring E-Purchasing', 'Kota Surakarta · Data realtime dari Google Spreadsheet'],
     data: ['Data Pengajuan E-Purchasing', 'Kelola & update status progres pengajuan OPD'],
-    kalender: ['Kalender Kerja Pejabat Pengadaan', 'Distribusi beban kerja berdasarkan tanggal e-Purchasing'],
-
+    kalender: ['Kalender Kerja', 'Kalender pengajuan & jadwal SPSE'],
     settings: ['Pengaturan Akun', 'Kelola password dan preferensi akun Anda'],
   };
 
@@ -2938,8 +3152,39 @@ function showPage(name) {
   document.getElementById('topbar-title').textContent = t;
   document.getElementById('topbar-sub').textContent = s;
 
-  if (name === 'kalender') renderCalendar();
+  if (name === 'kalender') {
+    if (_kalTabActive === 'gantt') {
+      _updateKalenderAuthState();
+      if (currentUser) loadKalenderData();
+    } else {
+      renderCalendar();
+    }
+  }
   if (name === 'settings') updateNavForUser();
+}
+
+let _kalTabActive = 'bulanan';
+function switchKalTab(tab) {
+  _kalTabActive = tab;
+  const bulananDiv = document.getElementById('kal-tab-bulanan');
+  const ganttDiv   = document.getElementById('kal-tab-gantt');
+  const btnBulanan = document.getElementById('tab-btn-bulanan');
+  const btnGantt   = document.getElementById('tab-btn-gantt');
+
+  if (tab === 'bulanan') {
+    if (bulananDiv) bulananDiv.style.display = 'block';
+    if (ganttDiv)   ganttDiv.style.display   = 'none';
+    if (btnBulanan) { btnBulanan.style.background = 'var(--primary)'; btnBulanan.style.color = '#fff'; }
+    if (btnGantt)   { btnGantt.style.background   = 'transparent'; btnGantt.style.color = 'var(--text2)'; }
+    renderCalendar();
+  } else {
+    if (bulananDiv) bulananDiv.style.display = 'none';
+    if (ganttDiv)   ganttDiv.style.display   = 'block';
+    if (btnBulanan) { btnBulanan.style.background = 'transparent'; btnBulanan.style.color = 'var(--text2)'; }
+    if (btnGantt)   { btnGantt.style.background   = 'var(--primary)'; btnGantt.style.color = '#fff'; }
+    _updateKalenderAuthState();
+    if (currentUser) loadKalenderData();
+  }
 }
 
 // ============================================================
@@ -3323,8 +3568,551 @@ document.addEventListener('drop', e => {
   });
 });
 
-document.getElementById('login-overlay').style.display = 'flex';
+// App dimulai publik — langsung loadData tanpa login
+updateNavForUser(); // sembunyikan nav-data dan tampilkan tombol login dari awal
 loadData();
+
+// ============================================================
+// PUBLIC LOGIN MODAL (Popup)
+// ============================================================
+let _pubLoginType = 'pp'; // 'pp' | 'opd'
+
+function openPublicLoginModal(type) {
+  _pubLoginType = type || 'pp';
+  const modal = document.getElementById('public-login-modal');
+  const title = document.getElementById('pub-login-title');
+  const header = document.getElementById('pub-login-header');
+  if (type === 'opd') {
+    title.textContent = '📤 Pengajuan E-Purchasing (OPD)';
+    header.style.background = 'linear-gradient(135deg,#065f46,#10b981)';
+  } else {
+    title.textContent = '🔑 Login Pejabat Pengadaan / Admin';
+    header.style.background = 'linear-gradient(135deg,#1e40af,#3b82f6)';
+  }
+  document.getElementById('pub-login-username').value = '';
+  document.getElementById('pub-login-password').value = '';
+  document.getElementById('pub-login-error').style.display = 'none';
+  document.getElementById('pub-login-btn').disabled = false;
+  document.getElementById('pub-login-btn').textContent = '🔓 Masuk';
+  modal.style.display = 'flex';
+  setTimeout(() => document.getElementById('pub-login-username').focus(), 100);
+}
+
+function closePublicLoginModal() {
+  const modal = document.getElementById('public-login-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+async function doPublicLogin() {
+  const username = (document.getElementById('pub-login-username').value || '').trim();
+  const password = (document.getElementById('pub-login-password').value || '').trim();
+  const errEl = document.getElementById('pub-login-error');
+  const btn   = document.getElementById('pub-login-btn');
+  errEl.style.display = 'none';
+
+  if (!username || !password) {
+    errEl.style.display = 'block';
+    errEl.textContent = '❌ Username dan password wajib diisi';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Memverifikasi...';
+
+  try {
+    const url = GAS_URL + '?action=loginUser&username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password);
+    const res = await xhrGet(url);
+
+    if (res && res.status === 'ok') {
+      const ppInstansiList = (res.keterangan || res.instansi || '')
+        .split('|').map(s => s.trim()).filter(Boolean);
+      currentUser = {
+        username    : res.username,
+        role        : res.role,          // 'pp' | 'opd' | 'superadmin'
+        displayName : res.displayName,
+        instansi    : res.instansi,
+        instansiList: ppInstansiList,
+      };
+      if (res.role === 'pp' || res.role === 'superadmin') isAuthenticated = true;
+      loginSuccess();
+    } else {
+      errEl.style.display = 'block';
+      errEl.textContent = '❌ ' + (res && res.message ? res.message : 'Username atau password salah');
+    }
+  } catch(e) {
+    errEl.style.display = 'block';
+    errEl.textContent = '❌ Gagal terhubung ke server. Coba lagi.';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔓 Masuk';
+  }
+}
+
+// ============================================================
+// KALENDER KERJA SPSE
+// ============================================================
+let kalData = [];         // semua data dari sheet KalenderKerja
+let kalFiltered = [];     // hasil filter
+let ganttStart = null;    // Date — awal window gantt (30 hari)
+const GANTT_DAYS = 30;
+
+async function loadKalenderData() {
+  const loadEl  = document.getElementById('gantt-loading');
+  const emptyEl = document.getElementById('gantt-empty');
+  const svgEl   = document.getElementById('gantt-svg');
+  if (loadEl)  { loadEl.style.display = 'block'; }
+  if (emptyEl) { emptyEl.style.display = 'none'; }
+  if (svgEl)   { svgEl.style.display = 'none'; }
+
+  try {
+    let url = GAS_URL + '?action=getCalendarData';
+    if (currentUser) {
+      url += '&role=' + encodeURIComponent(currentUser.role);
+      if (currentUser.instansi) url += '&instansi=' + encodeURIComponent(currentUser.instansi);
+    }
+    const res = await xhrGet(url);
+    kalData = (res && res.data) ? res.data : [];
+
+    // Isi dropdown filter
+    const dinasSel   = document.getElementById('kal-filter-dinas');
+    const pejabatSel = document.getElementById('kal-filter-pejabat-gantt');
+    if (dinasSel && res && res.dinasList) {
+      const curDinas = dinasSel.value;
+      dinasSel.innerHTML = '<option value="">Semua Dinas</option>';
+      res.dinasList.forEach(d => {
+        const o = document.createElement('option');
+        o.value = d; o.textContent = d;
+        if (d === curDinas) o.selected = true;
+        dinasSel.appendChild(o);
+      });
+    }
+    if (pejabatSel && res && res.pejabatList) {
+      const curPej = pejabatSel.value;
+      pejabatSel.innerHTML = '<option value="">Semua PP</option>';
+      res.pejabatList.forEach(p => {
+        const o = document.createElement('option');
+        o.value = p; o.textContent = p;
+        if (p === curPej) o.selected = true;
+        pejabatSel.appendChild(o);
+      });
+    }
+    applyKalFilter();
+  } catch(e) {
+    if (loadEl) { loadEl.textContent = '❌ Gagal memuat data: ' + e.message; }
+  }
+}
+
+function applyKalFilter() {
+  const paket  = (document.getElementById('kal-filter-paket')?.value        || '').toLowerCase().trim();
+  const metode = (document.getElementById('kal-filter-metode')?.value       || '').trim();
+  const dinas  = (document.getElementById('kal-filter-dinas')?.value        || '').trim();
+  const pejabat= (document.getElementById('kal-filter-pejabat-gantt')?.value|| '').trim();
+
+  kalFiltered = kalData.filter(row => {
+    if (paket   && !(row.nama_paket || '').toLowerCase().includes(paket))   return false;
+    if (metode  && (row.metode || 'E-Purchasing') !== metode)               return false;
+    if (dinas   && (row.dinas   || '') !== dinas)   return false;
+    if (pejabat && (row.pejabat || '') !== pejabat) return false;
+    return true;
+  });
+
+  renderGantt();
+  const countEl = document.getElementById('inject-cal-count');
+  if (countEl) countEl.textContent = kalFiltered.length + ' item jadwal';
+}
+
+function resetKalFilter() {
+  const p   = document.getElementById('kal-filter-paket');
+  const d   = document.getElementById('kal-filter-dinas');
+  const pej = document.getElementById('kal-filter-pejabat-gantt');
+  const met = document.getElementById('kal-filter-metode');
+  if (p)   p.value = '';
+  if (d)   d.value = '';
+  if (pej) pej.value = '';
+  if (met) met.value = '';
+  applyKalFilter();
+}
+
+function escapeXml(str) {
+  return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function ganttNav(dir) {
+  if (!ganttStart) ganttStart = new Date();
+  if (dir === 0) {
+    // Reset ke hari ini
+    ganttStart = new Date();
+    ganttStart.setHours(0,0,0,0);
+  } else {
+    ganttStart = new Date(ganttStart.getTime() + dir * GANTT_DAYS * 86400000);
+  }
+  renderGantt();
+}
+
+function renderGantt() {
+  const container = document.getElementById('gantt-container');
+  const loadEl    = document.getElementById('gantt-loading');
+  const emptyEl   = document.getElementById('gantt-empty');
+  if (!container) return;
+
+  if (loadEl)  loadEl.style.display = 'none';
+
+  if (!kalFiltered || kalFiltered.length === 0) {
+    if (emptyEl) emptyEl.style.display = 'block';
+    // Remove old SVG
+    const old = container.querySelector('svg');
+    if (old) old.remove();
+    return;
+  }
+  if (emptyEl) emptyEl.style.display = 'none';
+
+  // Tentukan window
+  if (!ganttStart) {
+    const dates = kalFiltered.map(r => new Date(r.tanggal_mulai)).filter(d => !isNaN(d));
+    const minDate = dates.length ? new Date(Math.min(...dates)) : new Date();
+    minDate.setHours(0,0,0,0);
+    ganttStart = minDate;
+  }
+  const windowStart = new Date(ganttStart);
+  windowStart.setHours(0,0,0,0);
+  const windowEnd = new Date(windowStart.getTime() + (GANTT_DAYS - 1) * 86400000);
+
+  const fmt = d => d.toLocaleDateString('id-ID', {day:'2-digit', month:'short', year:'numeric'});
+  const rangeEl = document.getElementById('gantt-range-label');
+  if (rangeEl) rangeEl.textContent = fmt(windowStart) + ' – ' + fmt(windowEnd);
+
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  const ROW_H   = 28;
+  const LABEL_W = 210;
+  const DAY_W   = 26;
+  const HDR_H   = 50;
+
+  // Group by paket+dinas
+  const paketMap = {};
+  kalFiltered.forEach(row => {
+    const k = (row.nama_paket||'Tanpa Nama') + '||' + (row.dinas||'');
+    if (!paketMap[k]) paketMap[k] = { nama_paket: row.nama_paket, dinas: row.dinas, pejabat: row.pejabat, metode: row.metode, rows: [] };
+    paketMap[k].rows.push(row);
+  });
+  const pakets = Object.values(paketMap);
+
+  let totalRows = 0;
+  pakets.forEach(p => { totalRows += p.rows.length + 1; });
+
+  const svgW = LABEL_W + DAY_W * GANTT_DAYS + 20;
+  const svgH = HDR_H + totalRows * ROW_H + 10;
+
+  // Build SVG string
+  let s = `<svg viewBox="0 0 ${svgW} ${svgH}" width="${svgW}" height="${svgH}" xmlns="http://www.w3.org/2000/svg" style="font-family:inherit;display:block">`;
+  s += `<rect width="${svgW}" height="${svgH}" fill="#fff"/>`;
+
+  // Day columns + headers
+  for (let i = 0; i < GANTT_DAYS; i++) {
+    const d   = new Date(windowStart.getTime() + i * 86400000);
+    const x   = LABEL_W + i * DAY_W;
+    const isTd= d.getTime() === today.getTime();
+    const isWe= d.getDay() === 0 || d.getDay() === 6;
+    s += `<rect x="${x}" y="0" width="${DAY_W}" height="${svgH}" fill="${isTd ? '#dbeafe' : isWe ? '#f8fafc' : '#fff'}"/>`;
+    s += `<text x="${x+DAY_W/2}" y="16" text-anchor="middle" font-size="9" fill="${isTd?'#1d4ed8':isWe?'#94a3b8':'#64748b'}" font-weight="${isTd?'800':'400'}">${d.getDate()}</text>`;
+    if (d.getDate()===1 || i===0) {
+      s += `<text x="${x+DAY_W/2}" y="29" text-anchor="middle" font-size="8" fill="#94a3b8">${d.toLocaleDateString('id-ID',{month:'short'})}</text>`;
+    }
+    s += `<text x="${x+DAY_W/2}" y="44" text-anchor="middle" font-size="8" fill="${isWe?'#cbd5e1':'#94a3b8'}">${['Min','Sen','Sel','Rab','Kam','Jum','Sab'][d.getDay()]}</text>`;
+    s += `<line x1="${x}" y1="${HDR_H}" x2="${x}" y2="${svgH}" stroke="#e2e8f0" stroke-width="0.5"/>`;
+  }
+
+  // Today line
+  const ti = Math.floor((today.getTime()-windowStart.getTime())/86400000);
+  if (ti>=0 && ti<GANTT_DAYS) {
+    const tx = LABEL_W + ti*DAY_W + DAY_W/2;
+    s += `<line x1="${tx}" y1="${HDR_H}" x2="${tx}" y2="${svgH}" stroke="#3b82f6" stroke-width="2" stroke-dasharray="4,3" opacity="0.6"/>`;
+  }
+
+  // Header border
+  s += `<line x1="0" y1="${HDR_H}" x2="${svgW}" y2="${HDR_H}" stroke="#e2e8f0" stroke-width="1"/>`;
+
+  // Rows
+  let rowIdx = 0;
+  pakets.forEach(paket => {
+    const py = HDR_H + rowIdx * ROW_H;
+    // Paket header
+    s += `<rect x="0" y="${py}" width="${svgW}" height="${ROW_H}" fill="#f1f5f9"/>`;
+    const metodeTag  = paket.metode || 'E-Purchasing';
+    const metodeColor= metodeTag === 'E-Purchasing' ? '#7c3aed' : '#0891b2';
+    const nameTrunc  = (paket.nama_paket||'Tanpa Nama').slice(0,32);
+    s += `<text x="8" y="${py+17}" font-size="10" font-weight="700" fill="#334155">${nameTrunc}</text>`;
+    if (paket.dinas) {
+      s += `<text x="8" y="${py+28}" font-size="8" fill="#64748b">${(paket.dinas).slice(0,40)}</text>`;
+    }
+    // Metode badge (right side)
+    s += `<rect x="${LABEL_W-72}" y="${py+6}" width="66" height="16" rx="8" fill="${metodeColor}" opacity="0.15"/>`;
+    s += `<text x="${LABEL_W-39}" y="${py+17}" text-anchor="middle" font-size="8" font-weight="700" fill="${metodeColor}">${metodeTag.slice(0,16)}</text>`;
+    rowIdx++;
+
+    paket.rows.forEach(row => {
+      const ry  = HDR_H + rowIdx * ROW_H;
+      const metode = row.metode || 'E-Purchasing';
+      s += `<rect x="0" y="${ry}" width="${svgW}" height="${ROW_H}" fill="${rowIdx%2===0?'#fafafa':'#fff'}"/>`;
+      // Label
+      const tahapLabel = (row.tahap||'-').slice(0,30);
+      s += `<text x="14" y="${ry+ROW_H/2+4}" font-size="10" fill="#475569">${tahapLabel}</text>`;
+      // Bar
+      const tM = new Date(row.tanggal_mulai);
+      const tS = new Date(row.tanggal_selesai);
+      if (!isNaN(tM) && !isNaN(tS)) {
+        const sd = Math.floor((tM.getTime()-windowStart.getTime())/86400000);
+        const ed = Math.floor((tS.getTime()-windowStart.getTime())/86400000);
+        const cs = Math.max(sd, 0);
+        const ce = Math.min(ed, GANTT_DAYS-1);
+        if (cs <= GANTT_DAYS-1 && ce >= 0) {
+          const bx = LABEL_W + cs*DAY_W + 2;
+          const bw = Math.max((ce-cs+1)*DAY_W - 4, 4);
+          const now = today.getTime();
+          let barColor;
+          if (metode === 'E-Purchasing') {
+            // Ungu untuk E-Purchasing
+            barColor = tS.getTime() < now ? '#7c3aed' : tM.getTime() <= now ? '#8b5cf6' : '#a78bfa';
+          } else {
+            // Biru/hijau/kuning untuk Pengadaan Langsung
+            barColor = tS.getTime() < now ? '#10b981' : tM.getTime() <= now ? '#3b82f6' : '#f59e0b';
+          }
+          s += `<rect x="${bx}" y="${ry+5}" width="${bw}" height="${ROW_H-10}" rx="3" fill="${barColor}" opacity="0.85"/>`;
+          if (bw > 36) {
+            const lbl = `${tM.getDate()}/${tM.getMonth()+1}–${tS.getDate()}/${tS.getMonth()+1}`;
+            s += `<text x="${bx+bw/2}" y="${ry+ROW_H/2+4}" text-anchor="middle" font-size="8" fill="#fff" font-weight="600">${lbl}</text>`;
+          }
+        }
+      }
+      s += `<line x1="0" y1="${ry+ROW_H}" x2="${svgW}" y2="${ry+ROW_H}" stroke="#e2e8f0" stroke-width="0.5"/>`;
+      rowIdx++;
+    });
+  });
+
+  s += '</svg>';
+
+  // Replace SVG in container
+  const oldSvg = container.querySelector('svg');
+  if (oldSvg) oldSvg.remove();
+  const tmp = document.createElement('div');
+  tmp.innerHTML = s;
+  const newSvg = tmp.querySelector('svg');
+  if (newSvg) container.appendChild(newSvg);
+}
+
+// ============================================================
+// SPSE PARSER & SIMPAN
+// ============================================================
+
+// Parse client-side — support berbagai format SPSE
+// Format dari screenshot: "1   Upload Dokumen Penawaran   13 Maret 2026 10:00   16 Maret 2026 08:59   Tidak Ada"
+// Format manual: "Tahap · yyyy-mm-dd · yyyy-mm-dd"
+function parseSPSEClient(text) {
+  const BULAN = {
+    'januari':1,'februari':2,'maret':3,'april':4,'mei':5,'juni':6,
+    'juli':7,'agustus':8,'september':9,'oktober':10,'november':11,'desember':12
+  };
+
+  function parseTanggalID(str) {
+    // "13 Maret 2026" atau "13 Maret 2026 10:00"
+    str = str.trim();
+    const m = str.match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/);
+    if (m) {
+      const bln = BULAN[m[2].toLowerCase()];
+      if (bln) {
+        const y = m[3], mo = String(bln).padStart(2,'0'), d = String(m[1]).padStart(2,'0');
+        return `${y}-${mo}-${d}`;
+      }
+    }
+    // fallback: yyyy-mm-dd / dd/mm/yyyy
+    const m2 = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m2) return `${m2[1]}-${m2[2]}-${m2[3]}`;
+    const m3 = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+    if (m3) return `${m3[3]}-${String(m3[2]).padStart(2,'0')}-${String(m3[1]).padStart(2,'0')}`;
+    return '';
+  }
+
+  function extractAllDates(line) {
+    const dates = [];
+    // Format "DD Bulan YYYY"
+    const r = /(\d{1,2}\s+(?:Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember)\s+\d{4}(?:\s+\d{1,2}:\d{2})?)/gi;
+    let m;
+    while ((m = r.exec(line)) !== null) {
+      const d = parseTanggalID(m[1]);
+      if (d) dates.push({ val: d, idx: m.index });
+    }
+    // Format yyyy-mm-dd
+    const r2 = /(\d{4}-\d{2}-\d{2})/g;
+    while ((m = r2.exec(line)) !== null) {
+      dates.push({ val: m[1], idx: m.index });
+    }
+    // Urutkan berdasarkan posisi di teks
+    dates.sort((a,b) => a.idx - b.idx);
+    return dates.map(d => d.val);
+  }
+
+  const results = [];
+  const lines = text.split('\n');
+
+  for (let line of lines) {
+    line = line.trim();
+    if (!line) continue;
+
+    // Hapus nomor baris di awal: "1   " atau "1."
+    line = line.replace(/^\d+[\.\s]+/, '').trim();
+    if (!line) continue;
+
+    // Coba split by · atau |
+    const parts = line.split(/[·|]/).map(s => s.trim()).filter(Boolean);
+    if (parts.length >= 3) {
+      const d1 = parseTanggalID(parts[1]);
+      const d2 = parseTanggalID(parts[2]);
+      if (d1 && d2) {
+        results.push({ tahap: parts[0], tanggal_mulai: d1, tanggal_selesai: d2 });
+        continue;
+      }
+    }
+
+    // Ekstrak semua tanggal dari baris
+    const dates = extractAllDates(line);
+    if (dates.length >= 2) {
+      // Nama tahap = teks sebelum tanggal pertama
+      // Cari posisi tanggal pertama (bulan atau yyyy)
+      const firstDateMatch = line.match(/\d{1,2}\s+(?:Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember)|\d{4}-\d{2}-\d{2}/i);
+      const tahap = firstDateMatch
+        ? line.slice(0, firstDateMatch.index).replace(/[\-–:·]+$/, '').trim()
+        : 'Tahap';
+      if (tahap) {
+        results.push({ tahap, tanggal_mulai: dates[0], tanggal_selesai: dates[1] });
+      }
+    }
+  }
+  return results;
+}
+
+let _spsePreviewData = [];
+
+function prosesSPSE() {
+  const text = (document.getElementById('spse-text')?.value || '').trim();
+  const previewEl = document.getElementById('spse-preview');
+  const tableEl   = document.getElementById('spse-preview-table');
+  if (!text) { if (previewEl) previewEl.style.display = 'none'; return; }
+
+  _spsePreviewData = parseSPSEClient(text);
+  if (!_spsePreviewData.length) {
+    if (previewEl) previewEl.style.display = 'none';
+    return;
+  }
+
+  let html = `<table style="width:100%;border-collapse:collapse;font-size:12px">
+    <thead style="background:#f1f5f9">
+      <tr>
+        <th style="padding:7px 10px;text-align:left;border-bottom:1px solid #e2e8f0">Tahap</th>
+        <th style="padding:7px 10px;text-align:center;border-bottom:1px solid #e2e8f0;white-space:nowrap">Mulai</th>
+        <th style="padding:7px 10px;text-align:center;border-bottom:1px solid #e2e8f0;white-space:nowrap">Selesai</th>
+      </tr>
+    </thead><tbody>`;
+  _spsePreviewData.forEach((row, i) => {
+    html += `<tr style="background:${i%2===0?'#fff':'#f8fafc'}">
+      <td style="padding:6px 10px;border-bottom:1px solid #e2e8f0">${row.tahap}</td>
+      <td style="padding:6px 10px;border-bottom:1px solid #e2e8f0;text-align:center">${row.tanggal_mulai}</td>
+      <td style="padding:6px 10px;border-bottom:1px solid #e2e8f0;text-align:center">${row.tanggal_selesai}</td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  if (tableEl)  tableEl.innerHTML = html;
+  if (previewEl) previewEl.style.display = 'block';
+}
+
+async function simpanJadwalSPSE() {
+  const namaPaket = (document.getElementById('spse-nama-paket')?.value || '').trim();
+  const metode    = (document.getElementById('spse-metode')?.value     || 'Pengadaan Langsung').trim();
+  const dinas     = (document.getElementById('spse-dinas')?.value      || '').trim();
+  const pejabat   = (document.getElementById('spse-pejabat')?.value    || '').trim();
+  const errEl     = document.getElementById('spse-panel-error');
+  errEl.style.display = 'none';
+
+  if (!namaPaket) { errEl.style.display='block'; errEl.textContent='❌ Nama paket wajib diisi'; return; }
+  if (!_spsePreviewData.length) { errEl.style.display='block'; errEl.textContent='❌ Tidak ada jadwal terdeteksi. Periksa format teks SPSE.'; return; }
+
+  const items = _spsePreviewData.map(r => ({...r, nama_paket: namaPaket, dinas, pejabat, metode }));
+  const payload = { items, metode, savedBy: currentUser?.username || 'anon' };
+
+  const btn = document.querySelector('#spse-panel .btn-primary');
+  if (btn) { btn.disabled=true; btn.textContent='⏳ Menyimpan...'; }
+
+  try {
+    const url = GAS_URL + '?action=saveSchedule&data=' + encodeURIComponent(JSON.stringify(payload));
+    const res = await xhrGet(url);
+    if (res && res.status === 'ok') {
+      showToast('✅ ' + (res.saved||items.length) + ' jadwal berhasil disimpan!', 'success');
+      toggleSpsePanel();
+      document.getElementById('spse-text').value = '';
+      document.getElementById('spse-nama-paket').value = '';
+      document.getElementById('spse-dinas').value = '';
+      document.getElementById('spse-pejabat').value = '';
+      document.getElementById('spse-preview').style.display = 'none';
+      _spsePreviewData = [];
+      setTimeout(() => loadKalenderData(), 1500);
+    } else {
+      errEl.style.display='block';
+      errEl.textContent = '❌ ' + (res?.message || 'Gagal menyimpan jadwal');
+    }
+  } catch(e) {
+    errEl.style.display='block';
+    errEl.textContent = '❌ Error: ' + e.message;
+  } finally {
+    if (btn) { btn.disabled=false; btn.textContent='💾 Simpan Jadwal'; }
+  }
+}
+
+function toggleSpsePanel() {
+  const p = document.getElementById('spse-panel');
+  if (!p) return;
+  p.style.display = (p.style.display === 'none' || !p.style.display) ? 'block' : 'none';
+}
+
+// ============================================================
+// INJECT GOOGLE CALENDAR
+// ============================================================
+function openInjectCalModal() {
+  const countEl = document.getElementById('inject-cal-count');
+  if (countEl) countEl.textContent = kalFiltered.length + ' item jadwal';
+  document.getElementById('inject-cal-error').style.display = 'none';
+  document.getElementById('btn-do-inject').disabled = false;
+  document.getElementById('btn-do-inject').textContent = '📆 Inject Sekarang';
+  document.getElementById('inject-cal-modal').style.display = 'flex';
+}
+
+function closeInjectCalModal() {
+  document.getElementById('inject-cal-modal').style.display = 'none';
+}
+
+async function doInjectCalendar() {
+  if (!kalFiltered.length) { showToast('❌ Tidak ada jadwal untuk diinjek', ''); return; }
+  const errEl = document.getElementById('inject-cal-error');
+  const btn   = document.getElementById('btn-do-inject');
+  errEl.style.display = 'none';
+  btn.disabled = true; btn.textContent = '⏳ Menginjek...';
+
+  try {
+    const payload = { items: kalFiltered, injectedBy: currentUser?.username || 'anon' };
+    const url = GAS_URL + '?action=injectGoogleCalendar&data=' + encodeURIComponent(JSON.stringify(payload));
+    const res = await xhrGet(url);
+    if (res && res.status === 'ok') {
+      closeInjectCalModal();
+      showToast('✅ ' + (res.created||0) + ' event berhasil ditambahkan ke Google Calendar!', 'success');
+    } else {
+      errEl.style.display = 'block';
+      errEl.textContent = '❌ ' + (res?.message || 'Gagal inject ke Google Calendar');
+    }
+  } catch(e) {
+    errEl.style.display = 'block';
+    errEl.textContent = '❌ ' + e.message;
+  } finally {
+    btn.disabled = false; btn.textContent = '📆 Inject Sekarang';
+  }
+}
 </script>
 </body>
 </html>
