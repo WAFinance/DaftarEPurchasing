@@ -699,7 +699,9 @@
   .pejabat-card {
     background: var(--surface); border-radius: var(--radius);
     padding: 16px; box-shadow: var(--shadow); border: 1px solid var(--border);
+    cursor: pointer; transition: box-shadow 0.15s, transform 0.15s;
   }
+  .pejabat-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.12); transform: translateY(-2px); }
 
   .pejabat-avatar {
     width: 40px; height: 40px; border-radius: 10px;
@@ -933,14 +935,28 @@
       <div class="pejabat-grid" id="pejabat-grid" style="padding:16px"></div>
     </div>
 
-    <!-- NEW UPDATE: Heatmap Beban Kerja PP dari KalenderKerja -->
+    <!-- NEW UPDATE: Heatmap Beban Kerja PP dari DATA_DASHBOARD + KalenderKerja -->
     <div class="table-card" id="heatmap-card">
       <div class="table-header">
         <div>
           <div class="card-title">🌡️ Heatmap Beban Kerja Pejabat Pengadaan</div>
-          <div class="card-sub" style="margin-bottom:0">Berdasarkan paket aktif di Jadwal Pengadaan (KalenderKerja)</div>
+          <div class="card-sub" style="margin-bottom:0">Berdasarkan paket aktif dari data pengajuan & jadwal</div>
         </div>
-        <button class="btn btn-outline btn-sm" onclick="loadHeatmapData()" title="Refresh heatmap">🔄 Refresh</button>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <!-- Filter Metode -->
+          <select id="heatmap-filter-metode" onchange="renderHeatmapFiltered()" style="font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:#fff;color:var(--text)">
+            <option value="">Semua Metode</option>
+            <option value="E-Purchasing">E-Purchasing</option>
+            <option value="Pengadaan Langsung">Pengadaan Langsung</option>
+          </select>
+          <!-- Sort -->
+          <select id="heatmap-sort" onchange="renderHeatmapFiltered()" style="font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:#fff;color:var(--text)">
+            <option value="aktif">↓ Paket Aktif</option>
+            <option value="total">↓ Total Paket</option>
+            <option value="nama">A–Z Nama</option>
+          </select>
+          <button class="btn btn-outline btn-sm" onclick="loadHeatmapData()" title="Refresh heatmap">🔄 Refresh</button>
+        </div>
       </div>
       <div id="heatmap-body" style="padding:16px">
         <div style="text-align:center;padding:32px;color:var(--text3);font-size:13px">
@@ -1862,11 +1878,12 @@ function updateEditVisibility() {
 }
 function populateLoginOPDSelect() {}
 
-function doChangePasswordSettings() {
+async function doChangePasswordSettings() {
   const oldVal  = (document.getElementById('settings-old-pwd')?.value     || '').trim();
   const newVal  = (document.getElementById('settings-new-pwd')?.value     || '').trim();
   const confVal = (document.getElementById('settings-confirm-pwd')?.value || '').trim();
   const msgEl   = document.getElementById('settings-pwd-msg');
+  const btn     = document.querySelector('#settings-changepwd-card .btn-primary');
 
   const showMsg = (txt, ok) => {
     msgEl.textContent = txt;
@@ -1875,15 +1892,37 @@ function doChangePasswordSettings() {
   };
 
   if (!currentUser) { showMsg('❌ Belum login', false); return; }
-  if (oldVal !== getPassword()) { showMsg('❌ Password lama salah', false); return; }
+  if (!oldVal) { showMsg('❌ Password lama wajib diisi', false); return; }
   if (newVal.length < 6) { showMsg('❌ Password baru minimal 6 karakter', false); return; }
-  if (newVal !== confVal) { showMsg('❌ Konfirmasi tidak cocok', false); return; }
+  if (newVal !== confVal) { showMsg('❌ Konfirmasi password tidak cocok', false); return; }
 
-  savePassword(newVal);
-  showMsg('✅ Password berhasil diubah!', true);
-  document.getElementById('settings-old-pwd').value = '';
-  document.getElementById('settings-new-pwd').value = '';
-  document.getElementById('settings-confirm-pwd').value = '';
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Menyimpan...'; }
+  msgEl.style.display = 'none';
+
+  try {
+    // Verifikasi & simpan password via GAS → update langsung ke DATA_USER
+    const url = GAS_URL + '?action=changePassword'
+      + '&username='    + encodeURIComponent(currentUser.username)
+      + '&oldPassword=' + encodeURIComponent(oldVal)
+      + '&newPassword=' + encodeURIComponent(newVal);
+
+    const res = await xhrGet(url);
+
+    if (res && res.status === 'ok') {
+      showMsg('✅ Password berhasil diubah! Silakan login ulang dengan password baru.', true);
+      document.getElementById('settings-old-pwd').value = '';
+      document.getElementById('settings-new-pwd').value = '';
+      document.getElementById('settings-confirm-pwd').value = '';
+      // Update password di currentUser juga agar session ini tetap valid
+      if (currentUser) currentUser._pwd = newVal;
+    } else {
+      showMsg('❌ ' + (res?.message || 'Gagal mengubah password'), false);
+    }
+  } catch(e) {
+    showMsg('❌ Gagal terhubung ke server: ' + e.message, false);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '💾 Simpan Password Baru'; }
+  }
 }
 
 // Status display mapping
@@ -2355,7 +2394,7 @@ function renderDashboard() {
       // Nomor WA hanya tampil jika sudah login (OPD ke atas)
       const waLink = (wa && currentUser) ? `<a href="https://wa.me/${wa.replace(/[^0-9]/g,'')}" target="_blank" style="color:var(--success);font-size:11px;text-decoration:none" title="Hubungi via WhatsApp">📱 ${esc(wa)}</a>` : '';
       return `
-    <div class="pejabat-card">
+    <div class="pejabat-card" onclick="showDashPopoutPejabat('${esc(name)}')">
       <div class="pejabat-avatar">${getInitials(name)}</div>
       <div class="pejabat-name">${esc(name)}</div>
       ${waLink ? `<div style="margin-top:2px;margin-bottom:4px">${waLink}</div>` : ''}
@@ -3790,6 +3829,8 @@ document.addEventListener('drop', e => {
 // ============================================================
 // NEW UPDATE: HEATMAP BEBAN KERJA PEJABAT PENGADAAN
 // NEW UPDATE: Data dari sheet KalenderKerja via GAS getHeatmapData (endpoint khusus, lebih ringan)
+let _heatmapRawData = []; // simpan data mentah untuk filter/sort client-side
+
 async function loadHeatmapData() {
   const bodyEl = document.getElementById('heatmap-body');
   if (!bodyEl) return;
@@ -3798,11 +3839,35 @@ async function loadHeatmapData() {
   try {
     const url = GAS_URL + '?action=getHeatmapData';
     const res = await xhrGet(url);
-    const data = (res && res.data) ? res.data : [];
-    renderHeatmap(data);
+    _heatmapRawData = (res && res.data) ? res.data : [];
+    renderHeatmapFiltered();
   } catch(e) {
     bodyEl.innerHTML = '<div style="padding:20px;color:var(--danger);font-size:13px">❌ Gagal memuat data: ' + e.message + '</div>';
   }
+}
+
+// NEW UPDATE: Filter + Sort client-side tanpa request ulang ke server
+function renderHeatmapFiltered() {
+  const metodeFilter = (document.getElementById('heatmap-filter-metode')?.value || '').trim();
+  const sortBy       = (document.getElementById('heatmap-sort')?.value || 'aktif');
+
+  let data = [..._heatmapRawData];
+
+  // Filter metode
+  if (metodeFilter) {
+    data = data.filter(r => (r.metode || '') === metodeFilter || (r.metodes || []).includes(metodeFilter));
+  }
+
+  // Sort
+  if (sortBy === 'total') {
+    data.sort((a,b) => b.total - a.total || b.aktif - a.aktif);
+  } else if (sortBy === 'nama') {
+    data.sort((a,b) => a.pejabat.localeCompare(b.pejabat));
+  } else {
+    data.sort((a,b) => b.aktif - a.aktif || b.total - a.total);
+  }
+
+  renderHeatmap(data);
 }
 
 // NEW UPDATE: renderHeatmap menerima data pre-aggregated dari getHeatmapData
@@ -3964,9 +4029,60 @@ function showDashPopoutOPD(opdName) {
   openDashPopout(shortOPD(opdName), filtered.length + ' paket · klik untuk detail', html);
 }
 
-// ============================================================
-// PUBLIC LOGIN MODAL (Popup)
-// ============================================================
+// Popout: klik Pejabat Card → daftar paket yang dikelola pejabat tsb
+function showDashPopoutPejabat(pejabatName) {
+  const paketLatest = {};
+  allData.forEach(d => {
+    if ((d.pejabat||'') !== pejabatName) return;
+    const key = (d.instansi||'') + '||' + (d.noRUP||d.namaPaket||'');
+    if (!paketLatest[key] || d.row > paketLatest[key].row) paketLatest[key] = d;
+  });
+  const filtered = Object.values(paketLatest)
+    .sort((a,b) => (b.timestamp||0) - (a.timestamp||0));
+
+  if (!filtered.length) {
+    openDashPopout(pejabatName, '0 paket', '<div style="text-align:center;padding:40px;color:var(--text3)">Tidak ada data</div>');
+    return;
+  }
+
+  const COLOR = {
+    'Selesai Pengadaan':'var(--success)','Sedang Direviu':'var(--info)',
+    'Perlu Perbaikan':'var(--warning)','Ditolak':'var(--danger)',
+    'Proses e-Purchasing':'var(--purple)',''  :'var(--text3)'
+  };
+
+  let selesai=0, aktif=0, ditolak=0;
+  filtered.forEach(d => {
+    if (d.progres==='Selesai Pengadaan') selesai++;
+    else if (d.progres==='Ditolak') ditolak++;
+    else aktif++;
+  });
+
+  let html = `
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+      <span style="background:#d1fae5;color:#065f46;font-size:11px;font-weight:700;padding:4px 10px;border-radius:99px">✅ ${selesai} selesai</span>
+      <span style="background:#fef3c7;color:#78350f;font-size:11px;font-weight:700;padding:4px 10px;border-radius:99px">⏳ ${aktif} aktif</span>
+      ${ditolak ? `<span style="background:#fee2e2;color:#7f1d1d;font-size:11px;font-weight:700;padding:4px 10px;border-radius:99px">❌ ${ditolak} ditolak</span>` : ''}
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px">`;
+
+  filtered.forEach(d => {
+    const color = COLOR[d.progres||''] || 'var(--text3)';
+    html += `<div style="background:var(--bg);border-radius:10px;padding:12px 14px;border-left:3px solid ${color};cursor:pointer"
+      onclick='closeDashPopout();showDetail(${JSON.stringify(d).replace(/'/g,"&#39;")})'>
+      <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px">${esc(d.namaPaket||'-')}</div>
+      <div style="font-size:11px;color:var(--text3);display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+        ${getStatusBadge(d.progres)}
+        <span>🏢 ${esc(shortOPD(d.instansi||'-'))}</span>
+        <span>📅 ${fmtDate(d.tglMulai)}</span>
+        ${d.anggaran ? `<span>💰 ${fmtMoney(d.anggaran)}</span>` : ''}
+      </div>
+    </div>`;
+  });
+  html += '</div>';
+
+  openDashPopout(pejabatName, filtered.length + ' paket · klik untuk detail', html);
+}
 let _pubLoginType = 'pp'; // 'pp' | 'opd'
 
 function openPublicLoginModal(type) {
