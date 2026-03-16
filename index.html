@@ -555,6 +555,16 @@
     max-width: 100%;
     transition: opacity 0.15s;
   }
+  /* Bar yang merentang — hapus border-radius kanan/kiri untuk sambungan */
+  .cal-event.ev-span-start  { border-radius: 4px 0 0 4px; margin-right: 0; padding-right: 2px; }
+  .cal-event.ev-span-mid    { border-radius: 0; margin-right: 0; padding-right: 2px; padding-left: 4px; opacity:0.9; }
+  .cal-event.ev-span-end    { border-radius: 0 4px 4px 0; padding-left: 4px; }
+  .cal-event.ev-span-single { border-radius: 4px; }
+  /* Spacer untuk slot kosong — pertahankan alignment baris */
+  .cal-event-spacer { height: 16px; margin-bottom: 2px; }
+  /* Sel kalender — padding kiri/kanan 0 agar bar nyambung ke tepi */
+  .cal-cell { padding: 6px 0 4px 0; }
+  .cal-date  { padding-left: 8px; }
 
   .cal-event:hover { opacity: 0.8; }
 
@@ -570,6 +580,15 @@
     cursor: pointer; padding: 1px 4px;
   }
   .cal-more:hover { color: var(--primary); }
+
+  /* Jadwal Pengadaan calendar events — warna berdasarkan metode & status */
+  .cal-event.ev-jadwal-rencana    { background:#dbeafe; color:#1d4ed8; border-left:3px solid #3b82f6; }
+  .cal-event.ev-jadwal-berjalan   { background:#d1fae5; color:#065f46; border-left:3px solid #10b981; }
+  .cal-event.ev-jadwal-selesai    { background:#f3f4f6; color:#6b7280; border-left:3px solid #9ca3af; }
+  .cal-event.ev-jadwal-epurchasing{ background:#ede9fe; color:#5b21b6; border-left:3px solid #7c3aed; }
+  .cal-event.ev-jadwal-langsung   { background:#fef3c7; color:#92400e; border-left:3px solid #f59e0b; }
+  /* Jadwal cell min height lebih tinggi untuk event multi-hari */
+  #jadwal-cal-body .cal-cell { min-height: 110px; }
 
   /* LEGEND */
   .legend { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
@@ -742,35 +761,55 @@
     <div class="logo-sub">Sistem Monitoring Pengadaan</div>
   </div>
   <nav class="sidebar-nav">
+    <!-- NEW UPDATE: Menu disusun per role, dikontrol oleh updateNavForUser() -->
     <div class="nav-label">Menu Utama</div>
     <button class="nav-item active" id="nav-dashboard" onclick="showPage('dashboard')">
       <span class="nav-icon">📊</span>
       <span>Dashboard</span>
     </button>
+
+    <!-- Kalender Kerja: PUBLIC + OPD (tanpa tab Jadwal Pengadaan) -->
+    <button class="nav-item" id="nav-kalender" onclick="showPage('kalender')">
+      <span class="nav-icon">📅</span>
+      <span>Kalender Kerja</span>
+    </button>
+
+    <!-- Data Pengajuan: PP/Admin only -->
     <button class="nav-item" id="nav-data" onclick="showPage('data')" style="display:none">
       <span class="nav-icon">📋</span>
       <span>Data Pengajuan</span>
     </button>
 
-    <button class="nav-item" id="nav-kalender" onclick="showPage('kalender')">
-      <span class="nav-icon">📅</span>
-      <span>Kalender Kerja</span>
+    <!-- NEW UPDATE: Pengajuan Baru — OPD only (disembunyikan untuk public & PP) -->
+    <button class="nav-item" id="btn-nav-form-pengajuan" onclick="openFormModal()" style="display:none;background:rgba(16,185,129,0.15);border-left:3px solid #10b981">
+      <span class="nav-icon">📤</span>
+      <span>Pengajuan Baru</span>
     </button>
+
+    <!-- NEW UPDATE: Tutorial — OPD only -->
+    <button class="nav-item" id="btn-nav-tutorial" onclick="window.open('https://bpbjsurakarta.github.io/TutorDaftarEPurchasing/','_blank')" style="display:none">
+      <span class="nav-icon">📖</span>
+      <span>Tutorial</span>
+    </button>
+
+    <!-- Akses section — hanya saat belum login -->
     <div class="nav-label" id="nav-label-akses">Akses</div>
     <button class="nav-item" id="btn-nav-login-pp" onclick="openPublicLoginModal('pp')" style="background:rgba(59,130,246,0.15);border-left:3px solid #3b82f6">
       <span class="nav-icon">🔑</span>
       <span>Login PP / Admin</span>
     </button>
     <button class="nav-item" id="btn-nav-pengajuan" onclick="openPublicLoginModal('opd')" style="background:rgba(16,185,129,0.15);border-left:3px solid #10b981">
-      <span class="nav-icon">📤</span>
-      <span>Pengajuan E-Purchasing</span>
+      <span class="nav-icon">🏢</span>
+      <span>Login OPD</span>
     </button>
-    <div class="nav-label">Lainnya</div>
+
+    <!-- Lainnya -->
+    <div class="nav-label" id="nav-label-lainnya">Lainnya</div>
     <button class="nav-item" onclick="window.open('https://lookerstudio.google.com/reporting/77b6cc2f-3db4-4ae8-b3e9-a30e3983f116','_blank')">
       <span class="nav-icon">📈</span>
       <span>Looker Studio</span>
     </button>
-    <button class="nav-item" onclick="window.open('https://bpbjsurakarta.github.io/TutorDaftarEPurchasing/','_blank')">
+    <button class="nav-item" id="btn-nav-tutorial-public" onclick="window.open('https://bpbjsurakarta.github.io/TutorDaftarEPurchasing/','_blank')">
       <span class="nav-icon">📖</span>
       <span>Tutorial</span>
     </button>
@@ -815,7 +854,7 @@
         <div class="hero-title">Sistem E-Purchasing BPBJ Kota Surakarta</div>
         <div class="hero-sub">OPD dapat memantau status pengajuan secara realtime. Klik tombol di bawah untuk mengajukan permohonan baru.</div>
       </div>
-      <button onclick="openFormModal()" class="hero-cta" style="border:none;cursor:pointer">
+      <button onclick="openFormModal()" id="hero-btn-pengajuan" class="hero-cta" style="border:none;cursor:pointer;display:none">
         ➕ Pengajuan Baru
       </button>
     </div>
@@ -873,6 +912,28 @@
         </div>
       </div>
       <div class="pejabat-grid" id="pejabat-grid" style="padding:16px"></div>
+    </div>
+
+    <!-- NEW UPDATE: Heatmap Beban Kerja PP dari KalenderKerja -->
+    <div class="table-card" id="heatmap-card">
+      <div class="table-header">
+        <div>
+          <div class="card-title">🌡️ Heatmap Beban Kerja Pejabat Pengadaan</div>
+          <div class="card-sub" style="margin-bottom:0">Berdasarkan paket aktif di Jadwal Pengadaan (KalenderKerja)</div>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="loadHeatmapData()" title="Refresh heatmap">🔄 Refresh</button>
+      </div>
+      <div id="heatmap-body" style="padding:16px">
+        <div style="text-align:center;padding:32px;color:var(--text3);font-size:13px">
+          <div class="spinner" style="margin:0 auto 12px"></div>
+          Memuat data heatmap...
+        </div>
+      </div>
+      <div style="padding:0 16px 14px;display:flex;gap:16px;font-size:11px;color:var(--text3)">
+        <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:14px;height:14px;background:#d1fae5;border:1px solid #6ee7b7;border-radius:3px"></span> 0–2 paket: Ringan</span>
+        <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:14px;height:14px;background:#fef3c7;border:1px solid #fcd34d;border-radius:3px"></span> 3–5 paket: Normal</span>
+        <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:14px;height:14px;background:#fee2e2;border:1px solid #fca5a5;border-radius:3px"></span> &gt;5 paket: Tinggi</span>
+      </div>
     </div>
   </div>
 
@@ -1018,10 +1079,10 @@
       </div>
     </div>
 
-    <!-- ====== TAB: JADWAL PENGADAAN (Gantt) — LOGIN REQUIRED ====== -->
+    <!-- ====== TAB: JADWAL PENGADAAN — Login Required — Kalender Bulanan ====== -->
     <div id="kal-tab-gantt" style="display:none">
 
-      <!-- Notice untuk publik -->
+      <!-- Notice untuk publik / OPD -->
       <div id="gantt-login-notice" style="display:none;background:linear-gradient(135deg,#eff6ff,#dbeafe);border:1px solid #bfdbfe;border-radius:10px;padding:16px 20px;margin-bottom:16px;text-align:center">
         <div style="font-size:32px;margin-bottom:8px">🔒</div>
         <div style="font-size:14px;font-weight:700;color:#1e40af;margin-bottom:4px">Jadwal Pengadaan hanya tersedia untuk PP/Admin</div>
@@ -1029,36 +1090,34 @@
         <button class="btn btn-primary btn-sm" onclick="openPublicLoginModal('pp')">🔑 Login Sekarang</button>
       </div>
 
-      <!-- Konten Gantt (hanya saat login) -->
+      <!-- Konten kalender jadwal (hanya saat login PP/Admin) -->
       <div id="gantt-authenticated-content">
-        <!-- Filter bar -->
-        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:16px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 16px">
-          <div style="flex:1;min-width:140px">
-            <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:5px">Nama Paket</div>
-            <input type="text" id="kal-filter-paket" class="form-control" placeholder="Cari nama paket..." oninput="applyKalFilter()" style="font-size:13px">
+
+        <!-- Toolbar: Nav bulan + Filter + Tombol aksi -->
+        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <!-- Nav bulan -->
+          <div style="display:flex;align-items:center;gap:8px">
+            <button class="cal-btn" onclick="changeJadwalMonth(-1)">‹</button>
+            <div id="jadwal-month-label" style="font-size:15px;font-weight:700;color:var(--text);min-width:140px;text-align:center"></div>
+            <button class="cal-btn" onclick="changeJadwalMonth(1)">›</button>
+            <button class="btn btn-outline btn-sm" onclick="changeJadwalMonth(0)">Hari Ini</button>
           </div>
-          <div style="flex:1;min-width:120px">
-            <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:5px">Metode</div>
-            <select id="kal-filter-metode" class="form-control" onchange="applyKalFilter()" style="font-size:13px">
+          <!-- Filter -->
+          <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+            <select id="kal-filter-metode" class="form-control" onchange="renderJadwalKal()" style="font-size:12px;padding:5px 10px;min-width:130px">
               <option value="">Semua Metode</option>
               <option value="E-Purchasing">E-Purchasing</option>
               <option value="Pengadaan Langsung">Pengadaan Langsung</option>
             </select>
-          </div>
-          <div style="flex:1;min-width:130px">
-            <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:5px">Dinas / OPD</div>
-            <select id="kal-filter-dinas" class="form-control" onchange="applyKalFilter()" style="font-size:13px">
+            <select id="kal-filter-dinas" class="form-control" onchange="renderJadwalKal()" style="font-size:12px;padding:5px 10px;min-width:130px">
               <option value="">Semua Dinas</option>
             </select>
-          </div>
-          <div style="flex:1;min-width:130px">
-            <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:5px">Pejabat Pengadaan</div>
-            <select id="kal-filter-pejabat-gantt" class="form-control" onchange="applyKalFilter()" style="font-size:13px">
+            <select id="kal-filter-pejabat-gantt" class="form-control" onchange="renderJadwalKal()" style="font-size:12px;padding:5px 10px;min-width:130px">
               <option value="">Semua PP</option>
             </select>
           </div>
-          <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
-            <button class="btn btn-outline btn-sm" onclick="resetKalFilter()">🔄 Reset</button>
+          <!-- Aksi -->
+          <div style="display:flex;gap:8px">
             <button class="btn btn-primary btn-sm" id="btn-inject-cal" onclick="openInjectCalModal()">📆 Google Calendar</button>
             <button class="btn btn-sm" id="btn-tambah-spse" onclick="toggleSpsePanel()" style="background:var(--success);color:#fff">➕ Tambah Jadwal</button>
           </div>
@@ -1087,6 +1146,11 @@
               <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:5px">Pejabat Pengadaan</div>
               <input type="text" id="spse-pejabat" class="form-control" placeholder="Nama pejabat" style="font-size:13px">
             </div>
+            <!-- NEW UPDATE: Kolom I — WA PIC/PPTK -->
+            <div>
+              <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:5px">WA PIC / PPTK</div>
+              <input type="text" id="spse-wa-pic" class="form-control" placeholder="Contoh: 08123456789" style="font-size:13px">
+            </div>
           </div>
           <div style="margin-bottom:12px">
             <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:5px">Paste Jadwal (Tahap · Tanggal Mulai · Tanggal Selesai)</div>
@@ -1105,31 +1169,26 @@
           </div>
         </div>
 
-        <!-- Gantt Navigation -->
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
-          <div style="display:flex;gap:8px;align-items:center">
-            <button class="btn btn-outline btn-sm" onclick="ganttNav(-1)">◀ Sebelumnya</button>
-            <button class="btn btn-outline btn-sm" onclick="ganttNav(0)">📍 Hari Ini</button>
-            <button class="btn btn-outline btn-sm" onclick="ganttNav(1)">Berikutnya ▶</button>
-          </div>
-          <div id="gantt-range-label" style="font-size:13px;font-weight:600;color:var(--text2)"></div>
-          <div style="display:flex;gap:12px;font-size:11px;color:var(--text3);flex-wrap:wrap">
-            <span style="display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:12px;height:12px;background:#3b82f6;border-radius:2px"></span>Berjalan</span>
-            <span style="display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:12px;height:12px;background:#10b981;border-radius:2px"></span>Selesai</span>
-            <span style="display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:12px;height:12px;background:#f59e0b;border-radius:2px"></span>Akan Datang</span>
-            <span style="display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:12px;height:12px;background:#8b5cf6;border-radius:2px"></span>E-Purchasing</span>
-          </div>
+        <!-- Legend -->
+        <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px;font-size:11px;color:var(--text2)">
+          <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:14px;height:10px;background:#dbeafe;border-left:3px solid #3b82f6;border-radius:2px"></span>Rencana</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:14px;height:10px;background:#d1fae5;border-left:3px solid #10b981;border-radius:2px"></span>Berjalan</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:14px;height:10px;background:#f3f4f6;border-left:3px solid #9ca3af;border-radius:2px"></span>Selesai</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:14px;height:10px;background:#ede9fe;border-left:3px solid #7c3aed;border-radius:2px"></span>E-Purchasing</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:14px;height:10px;background:#fef3c7;border-left:3px solid #f59e0b;border-radius:2px"></span>Pengadaan Langsung</span>
         </div>
 
-        <!-- Gantt Chart Container -->
-        <div style="background:#fff;border:1px solid var(--border);border-radius:12px;overflow:auto;min-height:300px;padding:12px" id="gantt-container">
-          <div id="gantt-loading" style="text-align:center;padding:60px;color:var(--text3);font-size:14px">⏳ Memuat data jadwal pengadaan...</div>
-          <div id="gantt-empty" style="display:none;text-align:center;padding:60px;color:var(--text3)">
-            <div style="font-size:40px;margin-bottom:12px">📭</div>
-            <div style="font-size:15px;font-weight:600;color:var(--text2)">Belum ada jadwal pengadaan</div>
-            <div style="font-size:13px;margin-top:6px">Klik <strong>Tambah Jadwal</strong> untuk menambahkan</div>
+        <!-- Kalender Grid Jadwal Pengadaan -->
+        <div class="calendar-grid">
+          <div class="cal-days-header">
+            <div class="cal-day-name">Sen</div><div class="cal-day-name">Sel</div>
+            <div class="cal-day-name">Rab</div><div class="cal-day-name">Kam</div>
+            <div class="cal-day-name">Jum</div><div class="cal-day-name">Sab</div>
+            <div class="cal-day-name">Min</div>
           </div>
+          <div class="cal-body" id="jadwal-cal-body"></div>
         </div>
+
       </div>
     </div>
   </div>
@@ -1548,11 +1607,12 @@ function doAppLogout() {
   isAuthenticated = false;
   updateEditVisibility();
   updateNavForUser();
-  // Jangan tampilkan login-overlay — app tetap public
   document.getElementById('login-username').value = '';
   document.getElementById('login-password').value = '';
   document.getElementById('login-error').style.display = 'none';
   showPage('dashboard');
+  // Re-render dashboard agar nomor WA tersembunyi kembali untuk publik
+  setTimeout(() => renderDashboard(), 100);
   showToast('👋 Anda telah logout', '');
 }
 
@@ -1629,68 +1689,128 @@ function loginSuccess() {
     else loadKalenderData();
   }
   showToast('✅ Selamat datang, ' + currentUser.displayName + '!', 'success');
+  // NEW UPDATE: re-render dashboard setelah login agar nomor WA pejabat tampil
+  setTimeout(() => { renderDashboard(); loadHeatmapData(); }, 300);
 }
 
 function updateNavForUser() {
-  const userInfo = document.getElementById('nav-user-info');
-  const topbarUser = document.getElementById('topbar-user');
-  const settingsNav = document.getElementById('nav-settings');
-  const btnNavLogout = document.getElementById('btn-nav-logout');
-  const navLabelAkses = document.getElementById('nav-label-akses');
-  const btnNavLoginPP = document.getElementById('btn-nav-login-pp');
-  const btnNavPengajuan = document.getElementById('btn-nav-pengajuan');
-  const navData = document.getElementById('nav-data');
-  const btnLihatSemua = document.getElementById('btn-lihat-semua');
+  // NEW UPDATE: menu dikontrol ketat per role
+  const role = currentUser ? currentUser.role : 'public';
 
-  if (!currentUser) {
-    if (userInfo) userInfo.style.display = 'none';
-    if (topbarUser) topbarUser.style.display = 'none';
-    if (settingsNav) settingsNav.style.display = 'none';
-    if (btnNavLogout) btnNavLogout.style.display = 'none';
-    if (navLabelAkses) navLabelAkses.style.display = '';
-    if (btnNavLoginPP) btnNavLoginPP.style.display = '';
-    if (btnNavPengajuan) btnNavPengajuan.style.display = '';
-    if (navData) navData.style.display = 'none';
-    if (btnLihatSemua) btnLihatSemua.style.display = 'none';
+  // Elemen yang dikontrol
+  const elems = {
+    userInfo          : document.getElementById('nav-user-info'),
+    topbarUser        : document.getElementById('topbar-user'),
+    settingsNav       : document.getElementById('nav-settings'),
+    btnNavLogout      : document.getElementById('btn-nav-logout'),
+    navLabelAkses     : document.getElementById('nav-label-akses'),
+    navLabelLainnya   : document.getElementById('nav-label-lainnya'),
+    btnNavLoginPP     : document.getElementById('btn-nav-login-pp'),
+    btnNavPengajuan   : document.getElementById('btn-nav-pengajuan'),  // Login OPD
+    navData           : document.getElementById('nav-data'),
+    btnLihatSemua     : document.getElementById('btn-lihat-semua'),
+    btnNavFormPengajuan: document.getElementById('btn-nav-form-pengajuan'), // menu Pengajuan Baru
+    heroBtnPengajuan  : document.getElementById('hero-btn-pengajuan'),      // tombol hero
+    btnNavTutorial    : document.getElementById('btn-nav-tutorial'),         // Tutorial (OPD only)
+    btnNavTutorialPub : document.getElementById('btn-nav-tutorial-public'),  // Tutorial (public)
+  };
+
+  const show = (el) => { if (el) el.style.display = ''; };
+  const hide = (el) => { if (el) el.style.display = 'none'; };
+  const showFlex = (el) => { if (el) el.style.display = 'flex'; };
+
+  // Reset semua dulu
+  hide(elems.btnNavLogout);
+  hide(elems.navData);
+  hide(elems.btnLihatSemua);
+  hide(elems.btnNavFormPengajuan);
+  hide(elems.heroBtnPengajuan);
+  hide(elems.btnNavTutorial);
+  hide(elems.settingsNav);
+  hide(elems.userInfo);
+  hide(elems.topbarUser);
+
+  if (role === 'public') {
+    // === PUBLIC: Dashboard, Kalender Kerja, Tutorial, Login PP, Login OPD ===
+    show(elems.navLabelAkses);
+    show(elems.btnNavLoginPP);
+    show(elems.btnNavPengajuan);
+    show(elems.navLabelLainnya);
+    show(elems.btnNavTutorialPub);
     _updateKalenderAuthState();
     return;
   }
-  if (navLabelAkses) navLabelAkses.style.display = 'none';
-  if (btnNavLoginPP) btnNavLoginPP.style.display = 'none';
-  if (btnNavPengajuan) btnNavPengajuan.style.display = 'none';
-  if (btnNavLogout) btnNavLogout.style.display = '';
-  if (navData) navData.style.display = '';
-  if (btnLihatSemua) btnLihatSemua.style.display = '';
 
-  const role = currentUser.role;
+  // Sudah login — sembunyikan tombol login, tampilkan logout
+  hide(elems.navLabelAkses);
+  hide(elems.btnNavLoginPP);
+  hide(elems.btnNavPengajuan);
+  hide(elems.navLabelLainnya);
+  hide(elems.btnNavTutorialPub);
+  show(elems.btnNavLogout);
+
+  // User info di sidebar & topbar
   const roleLabel = role === 'superadmin' ? 'Super Administrator'
     : role === 'pp' ? 'Pejabat Pengadaan'
     : 'OPD · ' + currentUser.displayName;
 
-  if (userInfo) {
-    userInfo.style.display = 'block';
+  if (elems.userInfo) {
+    elems.userInfo.style.display = 'block';
     document.getElementById('nav-user-name').textContent = currentUser.displayName;
     document.getElementById('nav-user-role').textContent = roleLabel;
   }
-  if (topbarUser) {
-    topbarUser.style.display = 'flex';
+  if (elems.topbarUser) {
+    elems.topbarUser.style.display = 'flex';
     document.getElementById('topbar-user-icon').textContent = role === 'superadmin' ? '👑' : role === 'pp' ? '🏛️' : '🏢';
     document.getElementById('topbar-user-label').textContent = currentUser.displayName;
   }
-  if (settingsNav) settingsNav.style.display = (role === 'pp' || role === 'superadmin') ? '' : 'none';
+
   const su = document.getElementById('settings-username-display');
   const sr = document.getElementById('settings-role-display');
   if (su) su.textContent = currentUser.username;
   if (sr) sr.textContent = roleLabel;
+
+  if (role === 'opd') {
+    // === OPD: Dashboard, Kalender Kerja, Pengajuan Baru, Tutorial ===
+    show(elems.btnNavFormPengajuan);
+    show(elems.heroBtnPengajuan);
+    show(elems.btnNavTutorial);
+    // OPD tidak bisa lihat Data Pengajuan & Jadwal Pengadaan (gantt)
+    hide(elems.navData);
+    hide(elems.btnLihatSemua);
+  } else {
+    // === PP / ADMIN / SUPERADMIN: Dashboard, Kalender Kerja, Data Pengajuan ===
+    show(elems.navData);
+    show(elems.btnLihatSemua);
+    show(elems.settingsNav);
+    // PP tidak ada Pengajuan Baru & Tutorial
+    hide(elems.btnNavFormPengajuan);
+    hide(elems.heroBtnPengajuan);
+  }
+
   _updateKalenderAuthState();
 }
 
 function _updateKalenderAuthState() {
-  const notice  = document.getElementById('gantt-login-notice');
-  const content = document.getElementById('gantt-authenticated-content');
-  const loggedIn = !!currentUser;
-  if (notice)  notice.style.display  = loggedIn ? 'none' : 'block';
-  if (content) content.style.display = loggedIn ? 'block' : 'none';
+  // NEW UPDATE: OPD tidak ada tab Jadwal Pengadaan
+  const role = currentUser ? currentUser.role : 'public';
+  const isPPOrAdmin = role === 'pp' || role === 'superadmin';
+
+  const tabGanttBtn  = document.getElementById('tab-btn-gantt');
+  const notice       = document.getElementById('gantt-login-notice');
+  const content      = document.getElementById('gantt-authenticated-content');
+
+  // Sembunyikan tab Jadwal Pengadaan untuk public & OPD
+  if (tabGanttBtn) tabGanttBtn.style.display = isPPOrAdmin ? '' : 'none';
+
+  // Update konten gantt
+  if (notice)  notice.style.display  = isPPOrAdmin ? 'none' : 'block';
+  if (content) content.style.display = isPPOrAdmin ? 'block' : 'none';
+
+  // Kalau tab gantt disembunyikan tapi sedang aktif, pindah ke bulanan
+  if (!isPPOrAdmin && _kalTabActive === 'gantt') {
+    switchKalTab('bulanan');
+  }
 }
 
 function setRole(role) { if (role === 'pejabat') { isAuthenticated = true; } }
@@ -2080,7 +2200,7 @@ function renderDashboard() {
       <div class="stat-icon">📋</div>
       <div class="stat-label">Total Pengajuan</div>
       <div class="stat-value">${total}</div>
-      <div class="stat-sub">${totalPaketUnik} paket unik (termasuk revisi)</div>
+      <div class="stat-sub">${totalPaketUnik} paket</div>
     </div>
     <div class="stat-card green">
       <div class="stat-icon">✅</div>
@@ -2199,14 +2319,15 @@ function renderDashboard() {
     .sort((a,b) => b[1].total - a[1].total)
     .map(([name, stats]) => {
       const wa = pejabatWA[name] || '';
-      const waLink = wa ? `<a href="https://wa.me/${wa.replace(/[^0-9]/g,'')}" target="_blank" style="color:var(--success);font-size:11px;text-decoration:none" title="Hubungi via WhatsApp">📱 ${esc(wa)}</a>` : '';
+      // Nomor WA hanya tampil jika sudah login (OPD ke atas)
+      const waLink = (wa && currentUser) ? `<a href="https://wa.me/${wa.replace(/[^0-9]/g,'')}" target="_blank" style="color:var(--success);font-size:11px;text-decoration:none" title="Hubungi via WhatsApp">📱 ${esc(wa)}</a>` : '';
       return `
     <div class="pejabat-card">
       <div class="pejabat-avatar">${getInitials(name)}</div>
       <div class="pejabat-name">${esc(name)}</div>
       ${waLink ? `<div style="margin-top:2px;margin-bottom:4px">${waLink}</div>` : ''}
       <div class="pejabat-stats">
-        <span class="pejabat-stat">📋 ${stats.total} paket unik</span>
+        <span class="pejabat-stat">📋 ${stats.total} paket</span>
         <span class="pejabat-stat" style="color:var(--success)">✅ ${stats.selesai} selesai</span>
         <span class="pejabat-stat" style="color:var(--warning)">⏳ ${stats.aktif} aktif</span>
         ${stats.ditolak ? `<span class="pejabat-stat" style="color:var(--danger)">❌ ${stats.ditolak} ditolak</span>` : ''}
@@ -2387,7 +2508,7 @@ function showDetail(d) {
       <div class="detail-item"><div class="detail-item-label">Rencana e-Purchasing</div><div class="detail-item-value">${fmtDate(d.tglMulai)}</div></div>
       <div class="detail-item"><div class="detail-item-label">Sampai Dengan</div><div class="detail-item-value">${fmtDate(d.tglAkhir)}</div></div>
       <div class="detail-item"><div class="detail-item-label">Status / Progres</div><div class="detail-item-value">${getStatusBadge(d.progres)}</div></div>
-      ${d.waPhone ? `<div class="detail-item"><div class="detail-item-label">WA PIC/PPTK</div><div class="detail-item-value"><a href="https://wa.me/${d.waPhone.replace(/[^0-9]/g,'')}" target="_blank" style="color:var(--primary)">📱 ${esc(d.waPhone)}</a></div></div>` : ''}
+      ${(d.waPhone && currentUser) ? `<div class="detail-item"><div class="detail-item-label">WA PIC/PPTK</div><div class="detail-item-value"><a href="https://wa.me/${d.waPhone.replace(/[^0-9]/g,'')}" target="_blank" style="color:var(--primary)">📱 ${esc(d.waPhone)}</a></div></div>` : ''}
     </div>
     ${(d.catatan || d.riwayatCatatan) ? `
     <hr class="divider">
@@ -2999,7 +3120,7 @@ function renderCalendar() {
   document.getElementById('cal-month-label').textContent = `${monthNames[calMonth]} ${calYear}`;
 
   const pejabatFilter = document.getElementById('cal-filter-pejabat').value;
-  const opdFilter = document.getElementById('cal-filter-opd').value;
+  const opdFilter     = document.getElementById('cal-filter-opd').value;
 
   let calData = allData.filter(d => {
     if (pejabatFilter && d.pejabat !== pejabatFilter) return false;
@@ -3007,57 +3128,93 @@ function renderCalendar() {
     return true;
   });
 
-  // Build event map by date (use tglMulai)
-  const eventMap = {};
-  calData.forEach(d => {
-    const dt = parseDate(d.tglMulai);
-    if (!dt) return;
-    const key = `${dt.getFullYear()}-${dt.getMonth()}-${dt.getDate()}`;
-    if (!eventMap[key]) eventMap[key] = [];
-    eventMap[key].push(d);
+  const today      = new Date(); today.setHours(0,0,0,0);
+  const firstOfMon = new Date(calYear, calMonth, 1);
+  const lastOfMon  = new Date(calYear, calMonth+1, 0);
+
+  // Build event map — setiap event muncul di SETIAP hari dalam rentang tglMulai–tglAkhir
+  // Struktur: key -> [ { event, spanPos:'start'|'mid'|'end'|'single', slotIdx, eventId } ]
+  const eventMap = {}; // key -> array of slot entries
+  const slotTracker = {}; // key -> array of eventIds per slot (to keep rows aligned)
+
+  // Assign unique id to each event
+  calData.forEach((d, idx) => { d._calId = idx; });
+
+  // Sort by tglMulai so earlier events get lower slots
+  const sorted = [...calData].sort((a,b) => {
+    const da = parseDate(a.tglMulai), db = parseDate(b.tglMulai);
+    return (da||0) - (db||0);
   });
 
-  const firstDay = new Date(calYear, calMonth, 1);
-  const lastDay = new Date(calYear, calMonth+1, 0);
-  const startDow = firstDay.getDay();
-  const today = new Date();
+  // Track slot usage per day: slotMap[key] = Set of eventIds occupying that slot
+  const daySlots = {}; // key -> array of eventId|null per slot
 
-  let cells = [];
+  sorted.forEach(ev => {
+    const tM = parseDate(ev.tglMulai);
+    const tA = parseDate(ev.tglAkhir) || tM;
+    if (!tM) return;
+
+    // Clamp to visible month
+    const clampS = tM < firstOfMon ? new Date(firstOfMon) : new Date(tM);
+    const clampE = tA > lastOfMon  ? new Date(lastOfMon)  : new Date(tA);
+
+    // Find lowest available slot across ALL days of this event
+    let slot = 0;
+    outer: while (true) {
+      for (let d = new Date(clampS); d <= clampE; d.setDate(d.getDate()+1)) {
+        const k = d.getFullYear()+'-'+d.getMonth()+'-'+d.getDate();
+        if (!daySlots[k]) daySlots[k] = [];
+        if (daySlots[k][slot] != null) { slot++; continue outer; }
+      }
+      break;
+    }
+
+    // Assign slot for each day
+    for (let d = new Date(clampS); d <= clampE; d.setDate(d.getDate()+1)) {
+      const k = d.getFullYear()+'-'+d.getMonth()+'-'+d.getDate();
+      if (!daySlots[k]) daySlots[k] = [];
+      daySlots[k][slot] = ev._calId;
+
+      // Determine span position
+      const isStart = d.toDateString() === clampS.toDateString();
+      const isEnd   = d.toDateString() === clampE.toDateString();
+      let spanPos = isStart && isEnd ? 'single' : isStart ? 'start' : isEnd ? 'end' : 'mid';
+      // Week boundary: if Mon reset to start-like for display
+      if (!isStart && d.getDay() === 1) spanPos = (isEnd ? 'end' : 'mid') + '-weekstart';
+
+      if (!eventMap[k]) eventMap[k] = [];
+      eventMap[k].push({ ev, slot, spanPos });
+    }
+  });
+
+  // Build grid cells — Minggu pertama (startDow dari Minggu=0)
+  const firstDay = new Date(calYear, calMonth, 1);
+  const lastDay  = new Date(calYear, calMonth+1, 0);
+  const startDow = firstDay.getDay(); // 0=Min
+  const cells = [];
   for (let i = 0; i < startDow; i++) {
-    const d = new Date(calYear, calMonth, -startDow+i+1);
-    cells.push({ date: d, thisMonth: false });
+    cells.push({ date: new Date(calYear, calMonth, i-startDow+1), thisMonth: false });
   }
   for (let d = 1; d <= lastDay.getDate(); d++) {
     cells.push({ date: new Date(calYear, calMonth, d), thisMonth: true });
   }
   while (cells.length % 7 !== 0) {
-    const d = new Date(calYear, calMonth+1, cells.length - lastDay.getDate() - startDow + 1);
-    cells.push({ date: d, thisMonth: false });
+    cells.push({ date: new Date(calYear, calMonth+1, cells.length-lastDay.getDate()-startDow+1), thisMonth: false });
   }
 
-  // Helper: get label text for event based on display mode
+  // Helper labels
   function getEventLabel(e) {
     if (calDisplayMode === 'dinas') {
-      // Singkat nama instansi: ambil kata bermakna pertama
       const name = e.instansi || '-';
-      // Coba ambil nama pendek: hapus prefix panjang
-      const short = name
-        .replace(/^(Unit Pelaksana Teknis Daerah\s+)/i,'UPTD ')
-        .replace(/^(Badan\s+)/i,'Badan ')
-        .replace(/^(Dinas\s+)/i,'Dinas ')
-        .replace(/^(Kecamatan\s+)/i,'Kec. ')
-        .replace(/^(Kelurahan\s+)/i,'Kel. ')
-        .replace(/^(Sekda\s+-\s+)/i,'Sekda - ')
-        .replace(/^(Inspektorat\s+)/i,'Inspektorat ');
-      // Potong maksimal 28 karakter
+      const short = name.replace(/^(Unit Pelaksana Teknis Daerah\s+)/i,'UPTD ')
+        .replace(/^(Badan\s+)/i,'Badan ').replace(/^(Dinas\s+)/i,'Dinas ')
+        .replace(/^(Kecamatan\s+)/i,'Kec. ').replace(/^(Kelurahan\s+)/i,'Kel. ')
+        .replace(/^(Sekda\s+-\s+)/i,'Sekda - ').replace(/^(Inspektorat\s+)/i,'Inspektorat ');
       return short.length > 28 ? short.substring(0,26)+'…' : short;
     } else if (calDisplayMode === 'pejabat') {
-      // Ambil nama depan+belakang saja (tanpa gelar)
-      const name = e.pejabat || '-';
-      const parts = name.split(',')[0]; // hapus gelar setelah koma
-      return parts.length > 22 ? parts.substring(0,20)+'…' : parts;
+      const name = (e.pejabat||'-').split(',')[0];
+      return name.length > 22 ? name.substring(0,20)+'…' : name;
     } else {
-      // Nama Paket (default)
       const name = e.namaPaket || '-';
       return name.length > 26 ? name.substring(0,24)+'…' : name;
     }
@@ -3066,21 +3223,50 @@ function renderCalendar() {
   const body = document.getElementById('cal-body');
   body.innerHTML = cells.map(cell => {
     const isToday = cell.date.toDateString() === today.toDateString();
-    const key = `${cell.date.getFullYear()}-${cell.date.getMonth()}-${cell.date.getDate()}`;
-    const events = eventMap[key] || [];
-    const maxShow = 3;
-    const shown = events.slice(0, maxShow);
-    const more = events.length - maxShow;
+    const key = cell.date.getFullYear()+'-'+cell.date.getMonth()+'-'+cell.date.getDate();
+    const entries = (eventMap[key] || []).sort((a,b) => a.slot - b.slot);
+
+    // Fill gaps with null so slots align across days
+    const maxSlot = entries.length ? entries[entries.length-1].slot : -1;
+    const slots = Array(maxSlot+1).fill(null);
+    entries.forEach(e => { slots[e.slot] = e; });
+
+    const MAX_SHOW = 3;
+    let shown = 0;
+    let moreCount = 0;
+    const evHtml = slots.map(entry => {
+      if (!entry) {
+        // Empty slot spacer (keeps alignment)
+        if (shown < MAX_SHOW) { shown++; return '<div class="cal-event-spacer"></div>'; }
+        return '';
+      }
+      if (shown >= MAX_SHOW) { moreCount++; return ''; }
+      shown++;
+
+      const ev = entry.ev;
+      const sp = entry.spanPos;
+      const cls = CAL_CLASS[ev.progres] || 'ev-default';
+
+      // Span class
+      const isWeekStart = cell.date.getDay() === 0 || sp.includes('weekstart');
+      let spanCls = '';
+      if (sp === 'single') spanCls = 'ev-span-single';
+      else if (sp === 'start' || isWeekStart) spanCls = 'ev-span-start';
+      else if (sp === 'end') spanCls = 'ev-span-end';
+      else spanCls = 'ev-span-mid';
+
+      // Show label only on start or week-start
+      const showLabel = sp === 'single' || sp === 'start' || isWeekStart;
+      const label = showLabel ? esc(getEventLabel(ev)) : '&nbsp;';
+      const tooltip = `${ev.namaPaket}\n${ev.instansi}\n${ev.pejabat}\nStatus: ${ev.progres||'-'}\n${fmtDate(ev.tglMulai)}${ev.tglAkhir?' – '+fmtDate(ev.tglAkhir):''}`;
+
+      return `<div class="cal-event ${cls} ${spanCls}" onclick='showDetail(${JSON.stringify(ev).replace(/'/g,"&#39;")})' title="${esc(tooltip)}">${label}</div>`;
+    }).join('');
 
     return `<div class="cal-cell${!cell.thisMonth?' other-month':''}${isToday?' today':''}">
       <div class="cal-date">${cell.date.getDate()}</div>
-      ${shown.map(e => {
-        const cls = CAL_CLASS[e.progres] || 'ev-default';
-        const label = getEventLabel(e);
-        const tooltip = `${e.namaPaket}\n${e.instansi}\n${e.pejabat}\nStatus: ${e.progres||'Belum diproses'}`;
-        return `<div class="cal-event ${cls}" onclick='showDetail(${JSON.stringify(e).replace(/'/g,"&#39;")})' title="${esc(tooltip)}">${esc(label)}</div>`;
-      }).join('')}
-      ${more > 0 ? `<div class="cal-more" onclick="showDayEvents('${key}')">+${more} lainnya</div>` : ''}
+      ${evHtml}
+      ${moreCount > 0 ? `<div class="cal-more" onclick="showDayEvents('${key}')">+${moreCount} lainnya</div>` : ''}
     </div>`;
   }).join('');
 }
@@ -3128,8 +3314,8 @@ function closeModal(e) {
 // NAVIGATION
 // ============================================================
 function showPage(name) {
-  // Proteksi halaman Data Pengajuan — hanya untuk user yang sudah login
-  if (name === 'data' && !currentUser) {
+  // NEW UPDATE: Proteksi halaman Data Pengajuan — hanya PP/Admin
+  if (name === 'data' && (!currentUser || currentUser.role === 'opd')) {
     openPublicLoginModal('pp');
     return;
   }
@@ -3568,9 +3754,83 @@ document.addEventListener('drop', e => {
   });
 });
 
+// ============================================================
+// NEW UPDATE: HEATMAP BEBAN KERJA PEJABAT PENGADAAN
+// NEW UPDATE: Data dari sheet KalenderKerja via GAS getHeatmapData (endpoint khusus, lebih ringan)
+async function loadHeatmapData() {
+  const bodyEl = document.getElementById('heatmap-body');
+  if (!bodyEl) return;
+  bodyEl.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text3);font-size:13px"><div class="spinner" style="margin:0 auto 12px"></div>Memuat data heatmap...</div>';
+
+  try {
+    const url = GAS_URL + '?action=getHeatmapData';
+    const res = await xhrGet(url);
+    const data = (res && res.data) ? res.data : [];
+    renderHeatmap(data);
+  } catch(e) {
+    bodyEl.innerHTML = '<div style="padding:20px;color:var(--danger);font-size:13px">❌ Gagal memuat data: ' + e.message + '</div>';
+  }
+}
+
+// NEW UPDATE: renderHeatmap menerima data pre-aggregated dari getHeatmapData
+// Format: [{ pejabat, aktif, total }, ...]
+function renderHeatmap(data) {
+  const bodyEl = document.getElementById('heatmap-body');
+  if (!bodyEl) return;
+
+  if (!data || data.length === 0) {
+    bodyEl.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text3);font-size:13px">📭 Belum ada data jadwal pengadaan</div>';
+    return;
+  }
+
+  let html = `<table style="width:100%;border-collapse:collapse;font-size:13px">
+    <thead>
+      <tr style="background:#f8fafc;border-bottom:2px solid var(--border)">
+        <th style="padding:10px 14px;text-align:left;font-weight:700;color:var(--text2)">#</th>
+        <th style="padding:10px 14px;text-align:left;font-weight:700;color:var(--text2)">Pejabat Pengadaan</th>
+        <th style="padding:10px 14px;text-align:center;font-weight:700;color:var(--text2)">Paket Aktif</th>
+        <th style="padding:10px 14px;text-align:center;font-weight:700;color:var(--text2)">Total Paket</th>
+        <th style="padding:10px 14px;text-align:center;font-weight:700;color:var(--text2)">Status Beban</th>
+      </tr>
+    </thead><tbody>`;
+
+  data.forEach((r, i) => {
+    let bg, textColor, statusLabel, statusIcon, borderColor;
+    if (r.aktif <= 2) {
+      bg = '#d1fae5'; textColor = '#065f46'; borderColor = '#6ee7b7'; statusLabel = 'Ringan'; statusIcon = '🟢';
+    } else if (r.aktif <= 5) {
+      bg = '#fef3c7'; textColor = '#78350f'; borderColor = '#fcd34d'; statusLabel = 'Normal'; statusIcon = '🟡';
+    } else {
+      bg = '#fee2e2'; textColor = '#7f1d1d'; borderColor = '#fca5a5'; statusLabel = 'Tinggi'; statusIcon = '🔴';
+    }
+
+    html += `<tr style="border-bottom:1px solid var(--border);background:${i%2===0?'#fff':'#fafafa'}">
+      <td style="padding:10px 14px;color:var(--text3);font-weight:600">${i+1}</td>
+      <td style="padding:10px 14px;font-weight:600;color:var(--text1)">
+        <span style="font-size:16px;margin-right:8px">🏛️</span>${r.pejabat}
+      </td>
+      <td style="padding:10px 14px;text-align:center">
+        <span style="font-size:20px;font-weight:800;color:${textColor}">${r.aktif}</span>
+      </td>
+      <td style="padding:10px 14px;text-align:center;color:var(--text3)">${r.total}</td>
+      <td style="padding:10px 14px;text-align:center">
+        <span style="display:inline-flex;align-items:center;gap:5px;background:${bg};color:${textColor};font-weight:700;font-size:12px;padding:4px 12px;border-radius:999px;border:1px solid ${borderColor}">${statusIcon} ${statusLabel}</span>
+      </td>
+    </tr>`;
+  });
+
+  html += '</tbody></table>';
+  bodyEl.innerHTML = html;
+}
+
+// ============================================================
+// App dimulai publik — langsung loadData tanpa login
+// ============================================================
 // App dimulai publik — langsung loadData tanpa login
 updateNavForUser(); // sembunyikan nav-data dan tampilkan tombol login dari awal
 loadData();
+// NEW UPDATE: Load heatmap saat init
+setTimeout(() => loadHeatmapData(), 2000);
 
 // ============================================================
 // PUBLIC LOGIN MODAL (Popup)
@@ -3651,18 +3911,17 @@ async function doPublicLogin() {
 // ============================================================
 // KALENDER KERJA SPSE
 // ============================================================
-let kalData = [];         // semua data dari sheet KalenderKerja
-let kalFiltered = [];     // hasil filter
-let ganttStart = null;    // Date — awal window gantt (30 hari)
-const GANTT_DAYS = 30;
+// ============================================================
+// JADWAL PENGADAAN — Kalender Bulanan (pengganti Gantt SVG)
+// ============================================================
+let kalData     = [];   // semua data dari KalenderKerja
+let kalFiltered = [];   // hasil filter aktif
+let jadwalMonth = new Date().getMonth();
+let jadwalYear  = new Date().getFullYear();
 
 async function loadKalenderData() {
-  const loadEl  = document.getElementById('gantt-loading');
-  const emptyEl = document.getElementById('gantt-empty');
-  const svgEl   = document.getElementById('gantt-svg');
-  if (loadEl)  { loadEl.style.display = 'block'; }
-  if (emptyEl) { emptyEl.style.display = 'none'; }
-  if (svgEl)   { svgEl.style.display = 'none'; }
+  const bodyEl = document.getElementById('jadwal-cal-body');
+  if (bodyEl) bodyEl.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text3)">⏳ Memuat data jadwal...</div>';
 
   try {
     let url = GAS_URL + '?action=getCalendarData';
@@ -3673,232 +3932,204 @@ async function loadKalenderData() {
     const res = await xhrGet(url);
     kalData = (res && res.data) ? res.data : [];
 
-    // Isi dropdown filter
     const dinasSel   = document.getElementById('kal-filter-dinas');
     const pejabatSel = document.getElementById('kal-filter-pejabat-gantt');
     if (dinasSel && res && res.dinasList) {
-      const curDinas = dinasSel.value;
+      const cur = dinasSel.value;
       dinasSel.innerHTML = '<option value="">Semua Dinas</option>';
       res.dinasList.forEach(d => {
         const o = document.createElement('option');
         o.value = d; o.textContent = d;
-        if (d === curDinas) o.selected = true;
+        if (d === cur) o.selected = true;
         dinasSel.appendChild(o);
       });
     }
     if (pejabatSel && res && res.pejabatList) {
-      const curPej = pejabatSel.value;
+      const cur = pejabatSel.value;
       pejabatSel.innerHTML = '<option value="">Semua PP</option>';
       res.pejabatList.forEach(p => {
         const o = document.createElement('option');
         o.value = p; o.textContent = p;
-        if (p === curPej) o.selected = true;
+        if (p === cur) o.selected = true;
         pejabatSel.appendChild(o);
       });
     }
     applyKalFilter();
   } catch(e) {
-    if (loadEl) { loadEl.textContent = '❌ Gagal memuat data: ' + e.message; }
+    if (bodyEl) bodyEl.innerHTML = '<div style="grid-column:1/-1;padding:20px;color:var(--danger)">❌ Gagal memuat: ' + e.message + '</div>';
   }
 }
 
 function applyKalFilter() {
-  const paket  = (document.getElementById('kal-filter-paket')?.value        || '').toLowerCase().trim();
-  const metode = (document.getElementById('kal-filter-metode')?.value       || '').trim();
-  const dinas  = (document.getElementById('kal-filter-dinas')?.value        || '').trim();
-  const pejabat= (document.getElementById('kal-filter-pejabat-gantt')?.value|| '').trim();
+  const metode  = (document.getElementById('kal-filter-metode')?.value        || '').trim();
+  const dinas   = (document.getElementById('kal-filter-dinas')?.value         || '').trim();
+  const pejabat = (document.getElementById('kal-filter-pejabat-gantt')?.value || '').trim();
 
   kalFiltered = kalData.filter(row => {
-    if (paket   && !(row.nama_paket || '').toLowerCase().includes(paket))   return false;
-    if (metode  && (row.metode || 'E-Purchasing') !== metode)               return false;
+    if (metode  && (row.metode  || 'E-Purchasing') !== metode)  return false;
     if (dinas   && (row.dinas   || '') !== dinas)   return false;
     if (pejabat && (row.pejabat || '') !== pejabat) return false;
     return true;
   });
 
-  renderGantt();
+  renderJadwalKal();
+
   const countEl = document.getElementById('inject-cal-count');
   if (countEl) countEl.textContent = kalFiltered.length + ' item jadwal';
 }
 
 function resetKalFilter() {
-  const p   = document.getElementById('kal-filter-paket');
-  const d   = document.getElementById('kal-filter-dinas');
-  const pej = document.getElementById('kal-filter-pejabat-gantt');
-  const met = document.getElementById('kal-filter-metode');
-  if (p)   p.value = '';
-  if (d)   d.value = '';
-  if (pej) pej.value = '';
-  if (met) met.value = '';
+  ['kal-filter-metode','kal-filter-dinas','kal-filter-pejabat-gantt'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
   applyKalFilter();
 }
 
-function escapeXml(str) {
-  return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-function ganttNav(dir) {
-  if (!ganttStart) ganttStart = new Date();
+function changeJadwalMonth(dir) {
   if (dir === 0) {
-    // Reset ke hari ini
-    ganttStart = new Date();
-    ganttStart.setHours(0,0,0,0);
+    jadwalMonth = new Date().getMonth();
+    jadwalYear  = new Date().getFullYear();
   } else {
-    ganttStart = new Date(ganttStart.getTime() + dir * GANTT_DAYS * 86400000);
+    jadwalMonth += dir;
+    if (jadwalMonth > 11) { jadwalMonth = 0; jadwalYear++; }
+    if (jadwalMonth < 0)  { jadwalMonth = 11; jadwalYear--; }
   }
-  renderGantt();
+  renderJadwalKal();
 }
 
-function renderGantt() {
-  const container = document.getElementById('gantt-container');
-  const loadEl    = document.getElementById('gantt-loading');
-  const emptyEl   = document.getElementById('gantt-empty');
-  if (!container) return;
+function renderJadwalKal() {
+  const body = document.getElementById('jadwal-cal-body');
+  if (!body) return;
 
-  if (loadEl)  loadEl.style.display = 'none';
+  const monthNames = ['Januari','Februari','Maret','April','Mei','Juni',
+    'Juli','Agustus','September','Oktober','November','Desember'];
+  const labelEl = document.getElementById('jadwal-month-label');
+  if (labelEl) labelEl.textContent = monthNames[jadwalMonth] + ' ' + jadwalYear;
 
-  if (!kalFiltered || kalFiltered.length === 0) {
-    if (emptyEl) emptyEl.style.display = 'block';
-    // Remove old SVG
-    const old = container.querySelector('svg');
-    if (old) old.remove();
-    return;
-  }
-  if (emptyEl) emptyEl.style.display = 'none';
+  const today        = new Date(); today.setHours(0,0,0,0);
+  const firstOfMonth = new Date(jadwalYear, jadwalMonth, 1);
+  const lastOfMonth  = new Date(jadwalYear, jadwalMonth + 1, 0);
 
-  // Tentukan window
-  if (!ganttStart) {
-    const dates = kalFiltered.map(r => new Date(r.tanggal_mulai)).filter(d => !isNaN(d));
-    const minDate = dates.length ? new Date(Math.min(...dates)) : new Date();
-    minDate.setHours(0,0,0,0);
-    ganttStart = minDate;
-  }
-  const windowStart = new Date(ganttStart);
-  windowStart.setHours(0,0,0,0);
-  const windowEnd = new Date(windowStart.getTime() + (GANTT_DAYS - 1) * 86400000);
+  // Assign unique id
+  kalFiltered.forEach((row, i) => { row._kalId = i; });
 
-  const fmt = d => d.toLocaleDateString('id-ID', {day:'2-digit', month:'short', year:'numeric'});
-  const rangeEl = document.getElementById('gantt-range-label');
-  if (rangeEl) rangeEl.textContent = fmt(windowStart) + ' – ' + fmt(windowEnd);
+  // Sort by tanggal_mulai
+  const sorted = [...kalFiltered].filter(r => r.tanggal_mulai).sort((a,b) =>
+    new Date(a.tanggal_mulai) - new Date(b.tanggal_mulai));
 
-  const today = new Date(); today.setHours(0,0,0,0);
+  const eventMap  = {};
+  const daySlots  = {};
 
-  const ROW_H   = 28;
-  const LABEL_W = 210;
-  const DAY_W   = 26;
-  const HDR_H   = 50;
+  sorted.forEach(row => {
+    const tM = new Date(row.tanggal_mulai);
+    const tS = new Date(row.tanggal_selesai || row.tanggal_mulai);
+    if (isNaN(tM)) return;
 
-  // Group by paket+dinas
-  const paketMap = {};
-  kalFiltered.forEach(row => {
-    const k = (row.nama_paket||'Tanpa Nama') + '||' + (row.dinas||'');
-    if (!paketMap[k]) paketMap[k] = { nama_paket: row.nama_paket, dinas: row.dinas, pejabat: row.pejabat, metode: row.metode, rows: [] };
-    paketMap[k].rows.push(row);
-  });
-  const pakets = Object.values(paketMap);
+    const clampS = tM < firstOfMonth ? new Date(firstOfMonth) : new Date(tM);
+    const clampE = tS > lastOfMonth  ? new Date(lastOfMonth)  : new Date(tS);
 
-  let totalRows = 0;
-  pakets.forEach(p => { totalRows += p.rows.length + 1; });
+    // Colour class
+    let cls;
+    if (tS < today)       cls = 'ev-jadwal-selesai';
+    else if (tM <= today) cls = 'ev-jadwal-berjalan';
+    else if ((row.metode||'').includes('E-Purchasing')) cls = 'ev-jadwal-epurchasing';
+    else if ((row.metode||'').includes('Langsung'))     cls = 'ev-jadwal-langsung';
+    else                  cls = 'ev-jadwal-rencana';
 
-  const svgW = LABEL_W + DAY_W * GANTT_DAYS + 20;
-  const svgH = HDR_H + totalRows * ROW_H + 10;
-
-  // Build SVG string
-  let s = `<svg viewBox="0 0 ${svgW} ${svgH}" width="${svgW}" height="${svgH}" xmlns="http://www.w3.org/2000/svg" style="font-family:inherit;display:block">`;
-  s += `<rect width="${svgW}" height="${svgH}" fill="#fff"/>`;
-
-  // Day columns + headers
-  for (let i = 0; i < GANTT_DAYS; i++) {
-    const d   = new Date(windowStart.getTime() + i * 86400000);
-    const x   = LABEL_W + i * DAY_W;
-    const isTd= d.getTime() === today.getTime();
-    const isWe= d.getDay() === 0 || d.getDay() === 6;
-    s += `<rect x="${x}" y="0" width="${DAY_W}" height="${svgH}" fill="${isTd ? '#dbeafe' : isWe ? '#f8fafc' : '#fff'}"/>`;
-    s += `<text x="${x+DAY_W/2}" y="16" text-anchor="middle" font-size="9" fill="${isTd?'#1d4ed8':isWe?'#94a3b8':'#64748b'}" font-weight="${isTd?'800':'400'}">${d.getDate()}</text>`;
-    if (d.getDate()===1 || i===0) {
-      s += `<text x="${x+DAY_W/2}" y="29" text-anchor="middle" font-size="8" fill="#94a3b8">${d.toLocaleDateString('id-ID',{month:'short'})}</text>`;
-    }
-    s += `<text x="${x+DAY_W/2}" y="44" text-anchor="middle" font-size="8" fill="${isWe?'#cbd5e1':'#94a3b8'}">${['Min','Sen','Sel','Rab','Kam','Jum','Sab'][d.getDay()]}</text>`;
-    s += `<line x1="${x}" y1="${HDR_H}" x2="${x}" y2="${svgH}" stroke="#e2e8f0" stroke-width="0.5"/>`;
-  }
-
-  // Today line
-  const ti = Math.floor((today.getTime()-windowStart.getTime())/86400000);
-  if (ti>=0 && ti<GANTT_DAYS) {
-    const tx = LABEL_W + ti*DAY_W + DAY_W/2;
-    s += `<line x1="${tx}" y1="${HDR_H}" x2="${tx}" y2="${svgH}" stroke="#3b82f6" stroke-width="2" stroke-dasharray="4,3" opacity="0.6"/>`;
-  }
-
-  // Header border
-  s += `<line x1="0" y1="${HDR_H}" x2="${svgW}" y2="${HDR_H}" stroke="#e2e8f0" stroke-width="1"/>`;
-
-  // Rows
-  let rowIdx = 0;
-  pakets.forEach(paket => {
-    const py = HDR_H + rowIdx * ROW_H;
-    // Paket header
-    s += `<rect x="0" y="${py}" width="${svgW}" height="${ROW_H}" fill="#f1f5f9"/>`;
-    const metodeTag  = paket.metode || 'E-Purchasing';
-    const metodeColor= metodeTag === 'E-Purchasing' ? '#7c3aed' : '#0891b2';
-    const nameTrunc  = (paket.nama_paket||'Tanpa Nama').slice(0,32);
-    s += `<text x="8" y="${py+17}" font-size="10" font-weight="700" fill="#334155">${nameTrunc}</text>`;
-    if (paket.dinas) {
-      s += `<text x="8" y="${py+28}" font-size="8" fill="#64748b">${(paket.dinas).slice(0,40)}</text>`;
-    }
-    // Metode badge (right side)
-    s += `<rect x="${LABEL_W-72}" y="${py+6}" width="66" height="16" rx="8" fill="${metodeColor}" opacity="0.15"/>`;
-    s += `<text x="${LABEL_W-39}" y="${py+17}" text-anchor="middle" font-size="8" font-weight="700" fill="${metodeColor}">${metodeTag.slice(0,16)}</text>`;
-    rowIdx++;
-
-    paket.rows.forEach(row => {
-      const ry  = HDR_H + rowIdx * ROW_H;
-      const metode = row.metode || 'E-Purchasing';
-      s += `<rect x="0" y="${ry}" width="${svgW}" height="${ROW_H}" fill="${rowIdx%2===0?'#fafafa':'#fff'}"/>`;
-      // Label
-      const tahapLabel = (row.tahap||'-').slice(0,30);
-      s += `<text x="14" y="${ry+ROW_H/2+4}" font-size="10" fill="#475569">${tahapLabel}</text>`;
-      // Bar
-      const tM = new Date(row.tanggal_mulai);
-      const tS = new Date(row.tanggal_selesai);
-      if (!isNaN(tM) && !isNaN(tS)) {
-        const sd = Math.floor((tM.getTime()-windowStart.getTime())/86400000);
-        const ed = Math.floor((tS.getTime()-windowStart.getTime())/86400000);
-        const cs = Math.max(sd, 0);
-        const ce = Math.min(ed, GANTT_DAYS-1);
-        if (cs <= GANTT_DAYS-1 && ce >= 0) {
-          const bx = LABEL_W + cs*DAY_W + 2;
-          const bw = Math.max((ce-cs+1)*DAY_W - 4, 4);
-          const now = today.getTime();
-          let barColor;
-          if (metode === 'E-Purchasing') {
-            // Ungu untuk E-Purchasing
-            barColor = tS.getTime() < now ? '#7c3aed' : tM.getTime() <= now ? '#8b5cf6' : '#a78bfa';
-          } else {
-            // Biru/hijau/kuning untuk Pengadaan Langsung
-            barColor = tS.getTime() < now ? '#10b981' : tM.getTime() <= now ? '#3b82f6' : '#f59e0b';
-          }
-          s += `<rect x="${bx}" y="${ry+5}" width="${bw}" height="${ROW_H-10}" rx="3" fill="${barColor}" opacity="0.85"/>`;
-          if (bw > 36) {
-            const lbl = `${tM.getDate()}/${tM.getMonth()+1}–${tS.getDate()}/${tS.getMonth()+1}`;
-            s += `<text x="${bx+bw/2}" y="${ry+ROW_H/2+4}" text-anchor="middle" font-size="8" fill="#fff" font-weight="600">${lbl}</text>`;
-          }
-        }
+    // Find lowest free slot across entire span
+    let slot = 0;
+    outer: while(true) {
+      for (let d = new Date(clampS); d <= clampE; d.setDate(d.getDate()+1)) {
+        const k = d.getFullYear()+'-'+d.getMonth()+'-'+d.getDate();
+        if (!daySlots[k]) daySlots[k] = [];
+        if (daySlots[k][slot] != null) { slot++; continue outer; }
       }
-      s += `<line x1="0" y1="${ry+ROW_H}" x2="${svgW}" y2="${ry+ROW_H}" stroke="#e2e8f0" stroke-width="0.5"/>`;
-      rowIdx++;
-    });
+      break;
+    }
+
+    // Place in slots & eventMap
+    for (let d = new Date(clampS); d <= clampE; d.setDate(d.getDate()+1)) {
+      const k = d.getFullYear()+'-'+d.getMonth()+'-'+d.getDate();
+      if (!daySlots[k]) daySlots[k] = [];
+      daySlots[k][slot] = row._kalId;
+
+      const isStart = d.toDateString() === clampS.toDateString();
+      const isEnd   = d.toDateString() === clampE.toDateString();
+      const isWeekBoundary = !isStart && d.getDay() === 1; // Senin mulai dari index 0 (Sen)
+      // Jadwal grid starts Mon
+      const dayOfWeek = d.getDay() === 0 ? 6 : d.getDay() - 1; // 0=Sen … 6=Min
+      const isWeekStart = !isStart && dayOfWeek === 0;
+
+      let spanPos = isStart && isEnd ? 'single' : isStart ? 'start' : isEnd ? 'end' : 'mid';
+      if (isWeekStart) spanPos = isEnd ? 'end' : 'mid'; // treat as continuation but render label
+
+      if (!eventMap[k]) eventMap[k] = [];
+      eventMap[k].push({ row, cls, slot, spanPos, isStart: isStart || isWeekStart });
+    }
   });
 
-  s += '</svg>';
+  // Build cells — grid starts Monday
+  const firstDay = new Date(jadwalYear, jadwalMonth, 1);
+  const lastDay  = new Date(jadwalYear, jadwalMonth + 1, 0);
+  let startOffset = firstDay.getDay() - 1;
+  if (startOffset < 0) startOffset = 6;
 
-  // Replace SVG in container
-  const oldSvg = container.querySelector('svg');
-  if (oldSvg) oldSvg.remove();
-  const tmp = document.createElement('div');
-  tmp.innerHTML = s;
-  const newSvg = tmp.querySelector('svg');
-  if (newSvg) container.appendChild(newSvg);
+  const cells = [];
+  for (let i = 0; i < startOffset; i++)
+    cells.push({ date: new Date(jadwalYear, jadwalMonth, i-startOffset+1), thisMonth: false });
+  for (let d = 1; d <= lastDay.getDate(); d++)
+    cells.push({ date: new Date(jadwalYear, jadwalMonth, d), thisMonth: true });
+  while (cells.length % 7 !== 0)
+    cells.push({ date: new Date(jadwalYear, jadwalMonth+1, cells.length-lastDay.getDate()-startOffset+1), thisMonth: false });
+
+  const MAX_SHOW = 4;
+
+  body.innerHTML = cells.map(cell => {
+    const isToday = cell.date.toDateString() === today.toDateString();
+    const k = cell.date.getFullYear()+'-'+cell.date.getMonth()+'-'+cell.date.getDate();
+    const entries = (eventMap[k]||[]).sort((a,b) => a.slot-b.slot);
+
+    const maxSlot = entries.length ? entries[entries.length-1].slot : -1;
+    const slots   = Array(maxSlot+1).fill(null);
+    entries.forEach(e => { slots[e.slot] = e; });
+
+    let shown = 0, moreCount = 0;
+    const evHtml = slots.map(entry => {
+      if (!entry) {
+        if (shown < MAX_SHOW) { shown++; return '<div class="cal-event-spacer"></div>'; }
+        return '';
+      }
+      if (shown >= MAX_SHOW) { moreCount++; return ''; }
+      shown++;
+
+      const sp  = entry.spanPos;
+      let spanCls = sp === 'single' ? 'ev-span-single'
+        : sp === 'start' ? 'ev-span-start'
+        : sp === 'end'   ? 'ev-span-end'
+        : 'ev-span-mid';
+
+      const label = entry.isStart
+        ? esc((entry.row.nama_paket||entry.row.tahap||'-').substring(0,22))
+        : '&nbsp;';
+      const tip = [entry.row.nama_paket, entry.row.tahap, entry.row.dinas,
+        entry.row.pejabat, (entry.row.metode||''),
+        entry.row.tanggal_mulai+' s.d. '+entry.row.tanggal_selesai,
+        entry.row.wa_pic ? '📱 '+entry.row.wa_pic : ''
+      ].filter(Boolean).join('\n');
+
+      return '<div class="cal-event '+entry.cls+' '+spanCls+'" title="'+esc(tip)+'">'+label+'</div>';
+    }).join('');
+
+    return '<div class="cal-cell'
+      +(!cell.thisMonth?' other-month':'')+(isToday?' today':'')
+      +'"><div class="cal-date">'+cell.date.getDate()+'</div>'
+      +evHtml
+      +(moreCount>0?'<div class="cal-more">+'+moreCount+' lainnya</div>':'')
+      +'</div>';
+  }).join('');
 }
+
 
 // ============================================================
 // SPSE PARSER & SIMPAN
@@ -4029,13 +4260,16 @@ async function simpanJadwalSPSE() {
   const metode    = (document.getElementById('spse-metode')?.value     || 'Pengadaan Langsung').trim();
   const dinas     = (document.getElementById('spse-dinas')?.value      || '').trim();
   const pejabat   = (document.getElementById('spse-pejabat')?.value    || '').trim();
+  // NEW UPDATE: baca wa_pic dari form
+  const waPic     = (document.getElementById('spse-wa-pic')?.value     || '').trim();
   const errEl     = document.getElementById('spse-panel-error');
   errEl.style.display = 'none';
 
   if (!namaPaket) { errEl.style.display='block'; errEl.textContent='❌ Nama paket wajib diisi'; return; }
   if (!_spsePreviewData.length) { errEl.style.display='block'; errEl.textContent='❌ Tidak ada jadwal terdeteksi. Periksa format teks SPSE.'; return; }
 
-  const items = _spsePreviewData.map(r => ({...r, nama_paket: namaPaket, dinas, pejabat, metode }));
+  // NEW UPDATE: sertakan wa_pic di setiap item
+  const items = _spsePreviewData.map(r => ({...r, nama_paket: namaPaket, dinas, pejabat, metode, wa_pic: waPic }));
   const payload = { items, metode, savedBy: currentUser?.username || 'anon' };
 
   const btn = document.querySelector('#spse-panel .btn-primary');
@@ -4051,6 +4285,9 @@ async function simpanJadwalSPSE() {
       document.getElementById('spse-nama-paket').value = '';
       document.getElementById('spse-dinas').value = '';
       document.getElementById('spse-pejabat').value = '';
+      // NEW UPDATE: reset wa_pic
+      const waPicEl = document.getElementById('spse-wa-pic');
+      if (waPicEl) waPicEl.value = '';
       document.getElementById('spse-preview').style.display = 'none';
       _spsePreviewData = [];
       setTimeout(() => loadKalenderData(), 1500);
