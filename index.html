@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dashboard E-Purchasing | BPBJ Kota Surakarta</title>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!-- FullCalendar -->
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
 <style>
   :root {
     --bg: #f0f4f8;
@@ -262,8 +265,8 @@
   .status-bar-top { display: flex; justify-content: space-between; align-items: center; }
   .status-bar-name { font-size: 12px; font-weight: 600; color: var(--text2); }
   .status-bar-count { font-size: 12px; font-weight: 700; color: var(--text); }
-  .status-bar-track { height: 8px; background: var(--bg); border-radius: 99px; overflow: hidden; }
-  .status-bar-fill { height: 100%; border-radius: 99px; transition: width 1s ease; }
+  .status-bar-track { height: 10px; background: var(--bg); border-radius: 99px; overflow: hidden; position: relative; }
+  .status-bar-fill { height: 100%; border-radius: 99px; transition: width 1s ease; min-width: 0; }
 
   /* Popout Detail Dashboard */
   .dash-popout-overlay {
@@ -528,7 +531,7 @@
   .calendar-grid {
     background: var(--surface); border-radius: var(--radius);
     box-shadow: var(--shadow); border: 1px solid var(--border);
-    overflow: hidden;
+    overflow: visible;
   }
 
   .cal-days-header {
@@ -544,16 +547,8 @@
 
   .cal-body {
     display: grid; grid-template-columns: repeat(7, 1fr);
-  }
-
-  .cal-cell {
-    min-height: 100px; padding: 8px;
-    border-right: 1px solid var(--border);
-    border-bottom: 1px solid var(--border);
     position: relative;
   }
-
-  .cal-cell:nth-child(7n) { border-right: none; }
 
   .cal-cell.other-month { background: var(--surface2); }
   .cal-cell.today { background: #fffbeb; }
@@ -567,32 +562,121 @@
   }
 
   .cal-event {
-    font-size: 10px; font-weight: 600;
-    padding: 2px 6px; border-radius: 4px;
+    font-size: 10px; font-weight: 700;
+    padding: 0;
     margin-bottom: 2px; cursor: pointer;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    max-width: 100%;
     transition: opacity 0.15s;
+    display: block;
+    box-sizing: border-box;
+    line-height: 20px;
+    height: 20px;
+    border-radius: 2px;
+    position: relative;
   }
-  /* Bar yang merentang — hapus border-radius kanan/kiri untuk sambungan */
-  .cal-event.ev-span-start  { border-radius: 4px 0 0 4px; margin-right: 0; padding-right: 2px; }
-  .cal-event.ev-span-mid    { border-radius: 0; margin-right: 0; padding-right: 2px; padding-left: 4px; opacity:0.9; }
-  .cal-event.ev-span-end    { border-radius: 0 4px 4px 0; padding-left: 4px; }
-  .cal-event.ev-span-single { border-radius: 4px; }
-  /* Spacer untuk slot kosong — pertahankan alignment baris */
-  .cal-event-spacer { height: 16px; margin-bottom: 2px; }
-  /* Sel kalender — padding kiri/kanan 0 agar bar nyambung ke tepi */
-  .cal-cell { padding: 6px 0 4px 0; }
-  .cal-date  { padding-left: 8px; }
+  /* wrapper untuk bar + label teks — tinggi sama dengan event */
+  .cal-event-wrap {
+    position: relative;
+    height: 20px;
+    margin-bottom: 2px;
+    cursor: pointer;
+  }
+  .cal-event-wrap .cal-event {
+    margin-bottom: 0;
+    height: 100%;
+  }
+  /* label melayang di atas bar, tidak di-clip oleh bar */
+  .cal-ev-label {
+    position: absolute;
+    left: 6px; top: 0;
+    height: 20px;
+    line-height: 20px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+    z-index: 9;
+    font-size: 10px; font-weight: 700;
+    max-width: 100%;
+  }
+  /* label warna putih untuk bar solid (e-Purchasing) */
+  .cal-ev-label-light { color: #fff; }
+  /* label warna gelap untuk bar pastel (PL, Tender) */
+  .cal-ev-label-dark  { color: #1e293b; }
+
+  .cal-event.ev-span-start { border-radius: 2px 0 0 2px; }
+  .cal-event.ev-span-single { border-radius: 2px; }
+  .cal-event.ev-span-mid   { border-radius: 0; border-left: none !important; }
+  .cal-event.ev-span-end   { border-radius: 0 2px 2px 0; border-left: none !important; }
+
+
+  /* Spacer — tinggi sama dengan event-wrap agar slot alignment terjaga */
+  .cal-event-spacer { height: 22px; margin-bottom: 0; display: block; }
+
+  /* Sel — overflow visible agar label bar bisa melayang ke kanan */
+  .cal-cell {
+    padding: 4px 0;
+    box-sizing: border-box;
+    overflow: visible;
+    min-height: 115px;
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+  .cal-cell:nth-child(7n) { border-right: none; }
+  .cal-date { padding: 2px 6px 3px 6px; font-size: 12px; font-weight: 700; }
+  #cal-body .cal-cell        { min-height: 115px; }
+  #jadwal-cal-body .cal-cell { min-height: 110px; }
 
   .cal-event:hover { opacity: 0.8; }
 
-  .cal-event.ev-selesai { background: var(--success-bg); color: var(--success); }
-  .cal-event.ev-reviu { background: var(--info-bg); color: var(--info); }
-  .cal-event.ev-perbaikan { background: var(--warning-bg); color: var(--warning); }
-  .cal-event.ev-ditolak { background: var(--danger-bg); color: var(--danger); }
-  .cal-event.ev-epurchasing { background: var(--purple-bg); color: var(--purple); }
-  .cal-event.ev-default { background: var(--bg); color: var(--text2); }
+  /* ── Calendar Heatmap ── */
+  .cal-hm-grid {
+    display: flex; gap: 3px; align-items: flex-start;
+  }
+  .cal-hm-months {
+    display: flex; gap: 3px; flex: 1;
+  }
+  .cal-hm-month { display: flex; flex-direction: column; align-items: flex-start; }
+  .cal-hm-month-label {
+    font-size: 10px; color: var(--text3); font-weight: 600;
+    margin-bottom: 4px; min-height: 14px;
+  }
+  .cal-hm-weeks { display: flex; gap: 3px; }
+  .cal-hm-week  { display: flex; flex-direction: column; gap: 3px; }
+  .cal-hm-day {
+    width: 13px; height: 13px; border-radius: 2px;
+    cursor: pointer; position: relative; flex-shrink: 0;
+    transition: transform 0.1s;
+  }
+  .cal-hm-day:hover { transform: scale(1.3); z-index: 10; }
+  .cal-hm-day-label {
+    display: flex; flex-direction: column; gap: 3px;
+    margin-right: 4px; padding-top: 14px;
+  }
+  .cal-hm-day-name {
+    font-size: 9px; color: var(--text3); height: 13px;
+    display: flex; align-items: center; line-height: 1; width: 20px;
+  }
+  /* Warna level */
+  .hm-0 { background: #ebedf0; border: 1px solid #d0d7de; }
+  .hm-1 { background: #9be9a8; }
+  .hm-2 { background: #40c463; }
+  .hm-3 { background: #f59e0b; }
+  .hm-4 { background: #ef4444; }
+  .cal-event.ev-selesai    { background: #10b981; color: #fff; }
+  .cal-event.ev-reviu      { background: #3b82f6; color: #fff; }
+  .cal-event.ev-perbaikan  { background: #f59e0b; color: #fff; }
+  .cal-event.ev-ditolak    { background: #ef4444; color: #fff; }
+  .cal-event.ev-epurchasing{ background: #8b5cf6; color: #fff; }
+  .cal-event.ev-default    { background: #94a3b8; color: #fff; }
+  /* mid/end span: warna sedikit lebih terang agar bar nampak menyambung */
+  .cal-event.ev-selesai.ev-span-mid,    .cal-event.ev-selesai.ev-span-end    { background: #34d399; }
+  .cal-event.ev-reviu.ev-span-mid,      .cal-event.ev-reviu.ev-span-end      { background: #60a5fa; }
+  .cal-event.ev-perbaikan.ev-span-mid,  .cal-event.ev-perbaikan.ev-span-end  { background: #fbbf24; }
+  .cal-event.ev-ditolak.ev-span-mid,    .cal-event.ev-ditolak.ev-span-end    { background: #f87171; }
+  .cal-event.ev-epurchasing.ev-span-mid,.cal-event.ev-epurchasing.ev-span-end{ background: #a78bfa; }
+  .cal-event.ev-default.ev-span-mid,    .cal-event.ev-default.ev-span-end    { background: #cbd5e1; }
 
   .cal-more {
     font-size: 10px; font-weight: 600; color: var(--text3);
@@ -606,13 +690,56 @@
   .cal-event.ev-jadwal-selesai    { background:#f3f4f6; color:#6b7280; border-left:3px solid #9ca3af; }
   .cal-event.ev-jadwal-epurchasing{ background:#ede9fe; color:#5b21b6; border-left:3px solid #7c3aed; }
   .cal-event.ev-jadwal-langsung   { background:#fef3c7; color:#92400e; border-left:3px solid #f59e0b; }
+  .cal-event.ev-jadwal-tender     { background:#fce7f3; color:#9d174d; border-left:3px solid #ec4899; }
   /* Jadwal cell min height lebih tinggi untuk event multi-hari */
-  #jadwal-cal-body .cal-cell { min-height: 110px; }
 
   /* LEGEND */
   .legend { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
   .legend-item { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text2); }
   .legend-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+
+  /* ── FullCalendar Bulanan Override ── */
+  #fc-cal-bulanan .fc-toolbar-title {
+    font-size: 15px; font-weight: 700; color: var(--text);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+  #fc-cal-bulanan .fc-button {
+    background: var(--primary) !important; border-color: var(--primary) !important;
+    font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12px; font-weight: 600;
+    padding: 5px 12px; border-radius: 6px !important;
+  }
+  #fc-cal-bulanan .fc-button:hover { background: #1d4ed8 !important; }
+  #fc-cal-bulanan .fc-col-header-cell {
+    background: var(--primary); padding: 8px 0;
+  }
+  #fc-cal-bulanan .fc-col-header-cell-cushion {
+    color: #fff; font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.5px; text-decoration: none;
+  }
+  #fc-cal-bulanan .fc-daygrid-day-number {
+    font-size: 12px; font-weight: 700; color: var(--text); text-decoration: none;
+    padding: 4px 6px;
+  }
+  #fc-cal-bulanan .fc-day-today { background: #fffbeb !important; }
+  #fc-cal-bulanan .fc-day-today .fc-daygrid-day-number {
+    background: var(--accent); color: #fff; border-radius: 50%;
+    width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
+  }
+  #fc-cal-bulanan .fc-daygrid-event {
+    border-radius: 3px; font-size: 10px; font-weight: 700;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    padding: 1px 5px; border: none; cursor: pointer;
+    white-space: nowrap; overflow: hidden;
+  }
+  #fc-cal-bulanan .fc-event-title { font-weight: 700; }
+  #fc-cal-bulanan .fc-daygrid-more-link {
+    font-size: 10px; font-weight: 700; color: var(--primary);
+  }
+  #fc-cal-bulanan .fc-toolbar { margin-bottom: 0 !important; }
+  #fc-cal-bulanan .fc-toolbar.fc-header-toolbar { display: none; }
+  #fc-cal-bulanan table { border-color: var(--border) !important; }
+  #fc-cal-bulanan td, #fc-cal-bulanan th { border-color: var(--border) !important; }
+  #fc-cal-bulanan .fc-scrollgrid { border-radius: 0 0 var(--radius) var(--radius); }
 
   /* LOADING */
   .loading {
@@ -695,7 +822,7 @@
   .hero-cta:hover { background: #fbbf24; transform: translateY(-2px); box-shadow: 0 6px 16px rgba(245,158,11,0.4); }
 
   /* PEJABAT CARDS */
-  .pejabat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; margin-bottom: 24px; }
+  .pejabat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 220px)); gap: 14px; margin-bottom: 24px; justify-content: start; }
   .pejabat-card {
     background: var(--surface); border-radius: var(--radius);
     padding: 16px; box-shadow: var(--shadow); border: 1px solid var(--border);
@@ -948,6 +1075,7 @@
             <option value="">Semua Metode</option>
             <option value="E-Purchasing">E-Purchasing</option>
             <option value="Pengadaan Langsung">Pengadaan Langsung</option>
+            <option value="Tender/Seleksi">Tender/Seleksi</option>
           </select>
           <!-- Sort -->
           <select id="heatmap-sort" onchange="renderHeatmapFiltered()" style="font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:#fff;color:var(--text)">
@@ -968,6 +1096,38 @@
         <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:14px;height:14px;background:#d1fae5;border:1px solid #6ee7b7;border-radius:3px"></span> 0–2 paket: Ringan</span>
         <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:14px;height:14px;background:#fef3c7;border:1px solid #fcd34d;border-radius:3px"></span> 3–5 paket: Normal</span>
         <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:14px;height:14px;background:#fee2e2;border:1px solid #fca5a5;border-radius:3px"></span> &gt;5 paket: Tinggi</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- CALENDAR HEATMAP BEBAN KERJA PEJABAT -->
+  <div class="table-card" id="cal-heatmap-card" style="margin-bottom:24px">
+    <div class="table-header">
+      <div>
+        <div class="card-title">📅 Calendar Heatmap Beban Kerja</div>
+        <div class="card-sub" style="margin-bottom:0">Kepadatan paket pengadaan per hari</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <select id="cal-heatmap-pejabat" onchange="renderCalHeatmap()" style="font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:#fff;color:var(--text)">
+          <option value="">Semua Pejabat</option>
+        </select>
+        <select id="cal-heatmap-year" onchange="renderCalHeatmap()" style="font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:#fff;color:var(--text)">
+        </select>
+      </div>
+    </div>
+    <div style="padding:16px;overflow-x:auto">
+      <div id="cal-heatmap-body">
+        <div style="text-align:center;padding:24px;color:var(--text3)">Memuat...</div>
+      </div>
+      <!-- Legend -->
+      <div style="display:flex;align-items:center;gap:6px;margin-top:12px;font-size:11px;color:var(--text3)">
+        <span>Lebih sedikit</span>
+        <span style="display:inline-block;width:13px;height:13px;background:#ebedf0;border-radius:2px;border:1px solid #d0d7de"></span>
+        <span style="display:inline-block;width:13px;height:13px;background:#9be9a8;border-radius:2px"></span>
+        <span style="display:inline-block;width:13px;height:13px;background:#40c463;border-radius:2px"></span>
+        <span style="display:inline-block;width:13px;height:13px;background:#f59e0b;border-radius:2px"></span>
+        <span style="display:inline-block;width:13px;height:13px;background:#ef4444;border-radius:2px"></span>
+        <span>Lebih banyak</span>
       </div>
     </div>
   </div>
@@ -1078,17 +1238,33 @@
               <option value="">Semua OPD</option>
             </select>
           </div>
+          <div class="filter-group">
+            <div class="filter-label">Metode Pengadaan</div>
+            <select id="cal-filter-metode-bulanan" onchange="renderCalendar()" style="min-width:160px">
+              <option value="">Semua Jenis</option>
+              <option value="E-Purchasing">E-Purchasing</option>
+              <option value="Pengadaan Langsung">Pengadaan Langsung</option>
+              <option value="Tender/Seleksi">Tender/Seleksi</option>
+            </select>
+          </div>
         </div>
       </div>
 
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px">
-        <div class="legend" style="margin-bottom:0">
-          <div class="legend-item"><div class="legend-dot" style="background:var(--success)"></div>Selesai Pengadaan</div>
-          <div class="legend-item"><div class="legend-dot" style="background:var(--info)"></div>Sedang Direviu</div>
-          <div class="legend-item"><div class="legend-dot" style="background:var(--warning)"></div>Perlu Perbaikan</div>
-          <div class="legend-item"><div class="legend-dot" style="background:var(--danger)"></div>Ditolak</div>
-          <div class="legend-item"><div class="legend-dot" style="background:var(--purple)"></div>Proses e-Purchasing</div>
-          <div class="legend-item"><div class="legend-dot" style="background:var(--text3)"></div>Tanpa Status</div>
+        <!-- Legend bar-style seperti di Jadwal Pengadaan -->
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-size:11px;color:var(--text2)">
+          <span style="display:flex;align-items:center;gap:5px">
+            <span style="display:inline-block;width:28px;height:10px;background:#10b981;border-radius:2px"></span>Selesai</span>
+          <span style="display:flex;align-items:center;gap:5px">
+            <span style="display:inline-block;width:28px;height:10px;background:#3b82f6;border-radius:2px"></span>Sedang Direviu</span>
+          <span style="display:flex;align-items:center;gap:5px">
+            <span style="display:inline-block;width:28px;height:10px;background:#f59e0b;border-radius:2px"></span>Perlu Perbaikan</span>
+          <span style="display:flex;align-items:center;gap:5px">
+            <span style="display:inline-block;width:28px;height:10px;background:#ef4444;border-radius:2px"></span>Ditolak</span>
+          <span style="display:flex;align-items:center;gap:5px">
+            <span style="display:inline-block;width:28px;height:10px;background:#8b5cf6;border-radius:2px"></span>Proses e-Purchasing</span>
+          <span style="display:flex;align-items:center;gap:5px">
+            <span style="display:inline-block;width:28px;height:10px;background:#94a3b8;border-radius:2px"></span>Tanpa Status</span>
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
           <span style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px">Tampilkan:</span>
@@ -1103,14 +1279,8 @@
         </div>
       </div>
 
-      <div class="calendar-grid">
-        <div class="cal-days-header">
-          <div class="cal-day-name">Min</div><div class="cal-day-name">Sen</div>
-          <div class="cal-day-name">Sel</div><div class="cal-day-name">Rab</div>
-          <div class="cal-day-name">Kam</div><div class="cal-day-name">Jum</div>
-          <div class="cal-day-name">Sab</div>
-        </div>
-        <div class="cal-body" id="cal-body"></div>
+      <div id="fc-cal-bulanan-wrap" style="background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);box-shadow:var(--shadow);padding:12px">
+        <div id="fc-cal-bulanan"></div>
       </div>
     </div>
 
@@ -1143,6 +1313,7 @@
               <option value="">Semua Metode</option>
               <option value="E-Purchasing">E-Purchasing</option>
               <option value="Pengadaan Langsung">Pengadaan Langsung</option>
+              <option value="Tender/Seleksi">Tender/Seleksi</option>
             </select>
             <select id="kal-filter-dinas" class="form-control" onchange="renderJadwalKal()" style="font-size:12px;padding:5px 10px;min-width:130px">
               <option value="">Semua Dinas</option>
@@ -1171,20 +1342,20 @@
               <select id="spse-metode" class="form-control" style="font-size:13px">
                 <option value="Pengadaan Langsung">Pengadaan Langsung</option>
                 <option value="E-Purchasing">E-Purchasing</option>
+                <option value="Tender/Seleksi">Tender/Seleksi</option>
               </select>
             </div>
             <div>
               <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:5px">Dinas / OPD</div>
-              <input type="text" id="spse-dinas" class="form-control" placeholder="Nama dinas" style="font-size:13px">
+              <!-- Dropdown diisi otomatis dari instansiList PP saat panel dibuka -->
+              <select id="spse-dinas" class="form-control" style="font-size:13px">
+                <option value="">Pilih Dinas / OPD</option>
+              </select>
             </div>
             <div>
               <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:5px">Pejabat Pengadaan</div>
-              <input type="text" id="spse-pejabat" class="form-control" placeholder="Nama pejabat" style="font-size:13px">
-            </div>
-            <!-- NEW UPDATE: Kolom I — WA PIC/PPTK -->
-            <div>
-              <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:5px">WA PIC / PPTK</div>
-              <input type="text" id="spse-wa-pic" class="form-control" placeholder="Contoh: 08123456789" style="font-size:13px">
+              <!-- Auto-fill dari nama login, readonly -->
+              <input type="text" id="spse-pejabat" class="form-control" placeholder="Nama pejabat" style="font-size:13px;background:var(--bg);color:var(--text2)" readonly>
             </div>
           </div>
           <div style="margin-bottom:12px">
@@ -1204,13 +1375,16 @@
           </div>
         </div>
 
-        <!-- Legend -->
-        <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px;font-size:11px;color:var(--text2)">
-          <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:14px;height:10px;background:#dbeafe;border-left:3px solid #3b82f6;border-radius:2px"></span>Rencana</span>
-          <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:14px;height:10px;background:#d1fae5;border-left:3px solid #10b981;border-radius:2px"></span>Berjalan</span>
-          <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:14px;height:10px;background:#f3f4f6;border-left:3px solid #9ca3af;border-radius:2px"></span>Selesai</span>
-          <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:14px;height:10px;background:#ede9fe;border-left:3px solid #7c3aed;border-radius:2px"></span>E-Purchasing</span>
-          <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:14px;height:10px;background:#fef3c7;border-left:3px solid #f59e0b;border-radius:2px"></span>Pengadaan Langsung</span>
+        <!-- Legend + View Mode Toggle -->
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px">
+          <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--text2)">
+            <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:14px;height:10px;background:#dbeafe;border-left:3px solid #3b82f6;border-radius:2px"></span>Rencana</span>
+            <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:14px;height:10px;background:#d1fae5;border-left:3px solid #10b981;border-radius:2px"></span>Berjalan</span>
+            <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:14px;height:10px;background:#f3f4f6;border-left:3px solid #9ca3af;border-radius:2px"></span>Selesai</span>
+            <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:14px;height:10px;background:#ede9fe;border-left:3px solid #7c3aed;border-radius:2px"></span>E-Purchasing</span>
+            <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:14px;height:10px;background:#fef3c7;border-left:3px solid #f59e0b;border-radius:2px"></span>Pengadaan Langsung</span>
+            <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:14px;height:10px;background:#fce7f3;border-left:3px solid #ec4899;border-radius:2px"></span>Tender/Seleksi</span>
+          </div>
         </div>
 
         <!-- Kalender Grid Jadwal Pengadaan -->
@@ -1330,6 +1504,30 @@
       <div style="margin-top:14px;font-size:11px;color:var(--text3);text-align:center">
         Hubungi BPBJ Surakarta untuk mendapatkan akun.
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- POPOUT: DETAIL JADWAL PENGADAAN (KalenderKerja) -->
+<div id="kal-detail-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:900;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)closeKalDetail()">
+  <div style="background:#fff;border-radius:12px;width:100%;max-width:820px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 40px rgba(0,0,0,0.2)">
+    <div style="background:var(--primary);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+      <div id="kal-detail-title" style="color:#fff;font-size:13px;font-weight:700;line-height:1.4"></div>
+      <button onclick="closeKalDetail()" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;line-height:1;padding:4px;opacity:0.8">×</button>
+    </div>
+    <div style="overflow-y:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead>
+          <tr style="background:#f1f5f9;border-bottom:2px solid var(--border)">
+            <th style="padding:10px 14px;text-align:center;font-weight:700;color:var(--text2);width:40px">NO</th>
+            <th style="padding:10px 14px;text-align:left;font-weight:700;color:var(--text2)">TAHAP</th>
+            <th style="padding:10px 14px;text-align:left;font-weight:700;color:var(--text2);width:160px">MULAI</th>
+            <th style="padding:10px 14px;text-align:left;font-weight:700;color:var(--text2);width:160px">SAMPAI</th>
+            <th style="padding:10px 14px;text-align:left;font-weight:700;color:var(--text2);width:90px">PERUBAHAN</th>
+          </tr>
+        </thead>
+        <tbody id="kal-detail-tbody"></tbody>
+      </table>
     </div>
   </div>
 </div>
@@ -1617,6 +1815,101 @@ function ppCanEditInstansi(targetInstansi) {
 }
 let currentUser = null;
 
+// ── Session Persistence — localStorage + expiry 10 menit ─────────────
+const SESSION_KEY    = 'bpbj_epurch_session';
+const SESSION_EXPIRY = 10 * 60 * 1000; // 10 menit dalam milliseconds
+const SESSION_WARN   =  1 * 60 * 1000; // Warning 1 menit sebelum expired
+
+function saveSession(user) {
+  try {
+    const payload = { user, exp: Date.now() + SESSION_EXPIRY };
+    localStorage.setItem(SESSION_KEY, JSON.stringify(payload));
+  } catch(e) {}
+}
+function clearSession() {
+  try { localStorage.removeItem(SESSION_KEY); } catch(e) {}
+}
+function restoreSession() {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const payload = JSON.parse(raw);
+    if (!payload.exp || Date.now() > payload.exp) {
+      localStorage.removeItem(SESSION_KEY);
+      return null;
+    }
+    return payload.user || null;
+  } catch(e) { return null; }
+}
+// Perpanjang session saat ada aktivitas (klik/ketik) — reset timer ke 10 menit
+function renewSession() {
+  if (!currentUser) return;
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return;
+    const payload = JSON.parse(raw);
+    payload.exp = Date.now() + SESSION_EXPIRY;
+    localStorage.setItem(SESSION_KEY, JSON.stringify(payload));
+    _sessionWarnShown = false; // reset warning flag
+  } catch(e) {}
+}
+// Throttle activity events agar tidak terlalu sering
+let _renewThrottle = null;
+let _sessionWarnShown = false;
+let _sessionCheckInterval = null;
+function _onUserActivity() {
+  if (!currentUser) return;
+  if (_renewThrottle) return;
+  _renewThrottle = setTimeout(() => {
+    renewSession();
+    _renewThrottle = null;
+  }, 10000); // throttle 10 detik
+}
+function startSessionWatcher() {
+  stopSessionWatcher();
+  // Cek expiry setiap 30 detik
+  _sessionCheckInterval = setInterval(() => {
+    if (!currentUser) { stopSessionWatcher(); return; }
+    try {
+      const raw = localStorage.getItem(SESSION_KEY);
+      if (!raw) { _forceExpiredLogout(); return; }
+      const payload = JSON.parse(raw);
+      const remaining = payload.exp - Date.now();
+      if (remaining <= 0) {
+        _forceExpiredLogout();
+      } else if (remaining <= SESSION_WARN && !_sessionWarnShown) {
+        _sessionWarnShown = true;
+        showToast('⚠️ Sesi akan berakhir dalam 1 menit. Klik di mana saja untuk memperpanjang.', 'warning', 8000);
+      }
+    } catch(e) { _forceExpiredLogout(); }
+  }, 30000);
+}
+function stopSessionWatcher() {
+  if (_sessionCheckInterval) { clearInterval(_sessionCheckInterval); _sessionCheckInterval = null; }
+}
+function _forceExpiredLogout() {
+  stopSessionWatcher();
+  clearSession();
+  currentUser = null;
+  isAuthenticated = false;
+  updateNavForUser();
+  showPage('dashboard');
+  setTimeout(() => renderDashboard(), 100);
+  // Tampilkan modal session expired
+  const msg = document.createElement('div');
+  msg.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center';
+  msg.innerHTML = `<div style="background:#fff;border-radius:16px;padding:32px 40px;text-align:center;max-width:360px;box-shadow:0 20px 40px rgba(0,0,0,0.3)">
+    <div style="font-size:48px;margin-bottom:12px">⏰</div>
+    <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px">Sesi Berakhir</div>
+    <div style="font-size:13px;color:var(--text3);margin-bottom:20px">Sesi login Anda telah habis setelah 10 menit tidak aktif. Silakan login kembali.</div>
+    <button onclick="this.closest('div[style]').remove();openPublicLoginModal('pp')"
+      style="background:var(--primary);color:#fff;border:none;border-radius:8px;padding:10px 28px;font-size:14px;font-weight:700;cursor:pointer">
+      🔓 Login Kembali
+    </button>
+  </div>`;
+  document.body.appendChild(msg);
+}
+
 // Simpan user list dari GAS (diisi saat loadData)
 let userListPP       = [];  // [{ username, password, displayName, instansi }]
 let userListOPD      = [];  // [{ username, password, displayName, instansi }]
@@ -1654,6 +1947,8 @@ function doLogout() { doAppLogout(); }
 function doAppLogout() {
   currentUser = null;
   isAuthenticated = false;
+  clearSession();
+  stopSessionWatcher();
   updateEditVisibility();
   updateNavForUser();
   document.getElementById('login-username').value = '';
@@ -1719,6 +2014,8 @@ function doLogin() {
 }
 
 function loginSuccess() {
+  saveSession(currentUser); // persist ke localStorage
+  startSessionWatcher();    // mulai auto-logout timer
   document.getElementById('login-overlay').style.display = 'none';
   closePublicLoginModal();
   if (currentUser.role === 'superadmin' || currentUser.role === 'pp') {
@@ -1892,34 +2189,40 @@ async function doChangePasswordSettings() {
   };
 
   if (!currentUser) { showMsg('❌ Belum login', false); return; }
+  if (!currentUser.username) { showMsg('❌ Data sesi tidak valid, coba login ulang', false); return; }
   if (!oldVal) { showMsg('❌ Password lama wajib diisi', false); return; }
   if (newVal.length < 6) { showMsg('❌ Password baru minimal 6 karakter', false); return; }
   if (newVal !== confVal) { showMsg('❌ Konfirmasi password tidak cocok', false); return; }
+  if (oldVal === newVal) { showMsg('❌ Password baru harus berbeda dari password lama', false); return; }
 
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Menyimpan...'; }
-  msgEl.style.display = 'none';
+  showMsg('⏳ Memproses...', true);
 
   try {
-    // Verifikasi & simpan password via GAS → update langsung ke DATA_USER
-    const url = GAS_URL + '?action=changePassword'
+    const url = GAS_URL
+      + '?action=changePassword'
       + '&username='    + encodeURIComponent(currentUser.username)
       + '&oldPassword=' + encodeURIComponent(oldVal)
       + '&newPassword=' + encodeURIComponent(newVal);
 
+    console.log('[changePassword] username:', currentUser.username, 'url length:', url.length);
+
     const res = await xhrGet(url);
+    console.log('[changePassword] response:', res);
 
     if (res && res.status === 'ok') {
-      showMsg('✅ Password berhasil diubah! Silakan login ulang dengan password baru.', true);
+      showMsg('✅ Password berhasil diubah! Gunakan password baru saat login berikutnya.', true);
       document.getElementById('settings-old-pwd').value = '';
       document.getElementById('settings-new-pwd').value = '';
       document.getElementById('settings-confirm-pwd').value = '';
-      // Update password di currentUser juga agar session ini tetap valid
-      if (currentUser) currentUser._pwd = newVal;
     } else {
-      showMsg('❌ ' + (res?.message || 'Gagal mengubah password'), false);
+      const errMsg = res?.message || 'Gagal mengubah password (tidak ada respon dari server)';
+      showMsg('❌ ' + errMsg, false);
+      console.error('[changePassword] error:', errMsg);
     }
   } catch(e) {
     showMsg('❌ Gagal terhubung ke server: ' + e.message, false);
+    console.error('[changePassword] exception:', e);
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '💾 Simpan Password Baru'; }
   }
@@ -2035,7 +2338,9 @@ async function loadData() {
   populateFilters();
   renderDashboard();
   applyFilters();
-  renderCalendar();
+  initFcCalBulanan();
+  // Init Calendar Heatmap
+  setTimeout(() => initCalHeatmap(), 200);
   // Ambil user list PP & OPD dari GAS
   loadUserList();
 }
@@ -2189,19 +2494,26 @@ function xhrGet(url) {
 
 function populateFilters() {
   const pejabats = [...new Set(allData.map(d=>d.pejabat).filter(Boolean))].sort();
-  const opds = [...new Set(allData.map(d=>d.instansi).filter(Boolean))].sort();
+  const opds     = [...new Set(allData.map(d=>d.instansi).filter(Boolean))].sort();
+  const jenisList= [...new Set(allData.map(d=>d.jenisP).filter(Boolean))].sort();
 
   ['filter-pejabat','cal-filter-pejabat'].forEach(id => {
     const sel = document.getElementById(id);
+    if (!sel) return;
     sel.innerHTML = '<option value="">Semua Pejabat</option>';
     pejabats.forEach(p => { sel.innerHTML += `<option value="${esc(p)}">${esc(p)}</option>`; });
   });
 
   ['filter-opd','cal-filter-opd'].forEach(id => {
     const sel = document.getElementById(id);
+    if (!sel) return;
     sel.innerHTML = '<option value="">Semua OPD</option>';
     opds.forEach(o => { sel.innerHTML += `<option value="${esc(o)}">${esc(shortOPD(o))}</option>`; });
   });
+
+  // Dropdown Metode Pengadaan di Kalender Bulanan — opsi tetap, tidak di-override dari data
+  // (opsi sudah diset di HTML: Semua Jenis / E-Purchasing / Pengadaan Langsung / Tender/Seleksi)
+
 }
 
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -2317,7 +2629,12 @@ function renderDashboard() {
     { label: 'Belum Diproses', count: paketPerStatus[''], instansi: instansiPerStatus[''].size, color: 'var(--text3)' },
   ];
 
-  document.getElementById('status-bars').innerHTML = bars.map(b => `
+  document.getElementById('status-bars').innerHTML = bars.map(b => {
+    // Lebar bar: proporsional tapi dengan minimum 4% agar selalu terlihat
+    // Jika count = 0, bar tetap muncul tipis (2px sebagai indikator)
+    const pct = totalBarBase > 0 ? Math.round(b.count / totalBarBase * 100) : 0;
+    const barW = b.count === 0 ? '0%' : Math.max(pct, 3) + '%';
+    return `
     <div class="status-bar-item" onclick="showDashPopoutStatus('${esc(b.label)}')">
       <div class="status-bar-top">
         <span class="status-bar-name">${b.label}</span>
@@ -2327,10 +2644,10 @@ function renderDashboard() {
         </span>
       </div>
       <div class="status-bar-track">
-        <div class="status-bar-fill" style="width:${Math.round(b.count/totalBarBase*100)}%;background:${b.color}"></div>
+        <div class="status-bar-fill" style="width:${barW};background:${b.color}"></div>
       </div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 
   // Top OPD — hitung berdasarkan paket unik (dedup revisi per RUP)
   const opdPaketCount = {};
@@ -3156,191 +3473,208 @@ async function saveGASUrl() {
 // ============================================================
 // PAGE 3: CALENDAR
 // ============================================================
+// ============================================================
+// KALENDER BULANAN — FullCalendar
+// ============================================================
+let _fcCalBulanan = null; // instance FullCalendar
+
+// Warna event berdasarkan progres / metode
+const FC_COLORS = {
+  'Selesai Pengadaan'   : { bg: '#10b981', text: '#fff' },
+  'Sedang Direviu'      : { bg: '#3b82f6', text: '#fff' },
+  'Perlu Perbaikan'     : { bg: '#f59e0b', text: '#fff' },
+  'Ditolak'             : { bg: '#ef4444', text: '#fff' },
+  'Proses e-Purchasing' : { bg: '#8b5cf6', text: '#fff' },
+  '_default'            : { bg: '#94a3b8', text: '#fff' },
+  '_langsung'           : { bg: '#fef3c7', text: '#92400e' },
+  '_tender'             : { bg: '#fce7f3', text: '#9d174d' },
+};
+
+function _fcBuildEvents() {
+  const pejabatFilter = document.getElementById('cal-filter-pejabat')?.value || '';
+  const opdFilter     = document.getElementById('cal-filter-opd')?.value || '';
+  const mF            = (document.getElementById('cal-filter-metode-bulanan')?.value || '').toLowerCase();
+  const mode          = calDisplayMode || 'paket';
+  const events        = [];
+
+  function getTitle(namaPaket, instansi, pejabat) {
+    if (mode === 'dinas') return shortOPD(instansi || '-');
+    if (mode === 'pejabat') return (pejabat || '-').split(',')[0];
+    return namaPaket || '-';
+  }
+
+  // ── Sumber 1: allData (e-Purchasing) ──
+  if (!mF || mF === 'e-purchasing') {
+    const dedupMap = {};
+    allData.forEach(d => {
+      if (pejabatFilter && d.pejabat !== pejabatFilter) return;
+      if (opdFilter && d.instansi !== opdFilter) return;
+      const key = (d.instansi||'') + '||' + (d.noRUP || d.namaPaket || '');
+      if (!dedupMap[key] || d.row > dedupMap[key].row) dedupMap[key] = d;
+    });
+    Object.values(dedupMap).forEach(d => {
+      const tM = parseDate(d.tglMulai);
+      if (!tM) return;
+      const tA = parseDate(d.tglAkhir) || tM;
+      // FullCalendar end date exclusive → tambah 1 hari
+      const endEx = new Date(tA); endEx.setDate(endEx.getDate() + 1);
+      const col = FC_COLORS[d.progres] || FC_COLORS['_default'];
+      events.push({
+        id     : 'epur_' + (d.noRUP || d.namaPaket || Math.random()),
+        title  : getTitle(d.namaPaket, d.instansi, d.pejabat),
+        start  : tM.toISOString().split('T')[0],
+        end    : endEx.toISOString().split('T')[0],
+        backgroundColor: col.bg,
+        textColor: col.text,
+        borderColor: col.bg,
+        extendedProps: { _src: 'epurchasing', _raw: d }
+      });
+    });
+  }
+
+  // ── Sumber 2: KalenderKerja (PL, Tender) ──
+  if (!mF || mF === 'pengadaan langsung' || mF === 'tender/seleksi') {
+    (_kalendarRawForHeatmap || []).forEach(item => {
+      const m = (item.metode || '').toLowerCase();
+      if (mF === 'pengadaan langsung' && !m.includes('langsung')) return;
+      if (mF === 'tender/seleksi' && !m.includes('tender') && !m.includes('seleksi')) return;
+      if (!mF && !m.includes('langsung') && !m.includes('tender') && !m.includes('seleksi')) return;
+      if (pejabatFilter && (item.pejabat||'') !== pejabatFilter) return;
+      if (opdFilter && (item.dinas||'') !== opdFilter) return;
+      if (!item.tanggal_mulai) return;
+
+      const tM = new Date(item.tanggal_mulai);
+      const tA = item.tanggal_selesai ? new Date(item.tanggal_selesai) : new Date(tM);
+      const endEx = new Date(tA); endEx.setDate(endEx.getDate() + 1);
+
+      const isLangsung = m.includes('langsung');
+      const col = isLangsung ? FC_COLORS['_langsung'] : FC_COLORS['_tender'];
+
+      events.push({
+        id     : 'kal_' + (item.id || item.nama_paket || Math.random()),
+        title  : getTitle(item.nama_paket, item.dinas, item.pejabat),
+        start  : tM.toISOString().split('T')[0],
+        end    : endEx.toISOString().split('T')[0],
+        backgroundColor: col.bg,
+        textColor: col.text,
+        borderColor: col.bg,
+        extendedProps: { _src: 'kalender', _raw: item }
+      });
+    });
+  }
+
+  return events;
+}
+
+function initFcCalBulanan() {
+  const el = document.getElementById('fc-cal-bulanan');
+  if (!el) return;
+
+  if (_fcCalBulanan) { _fcCalBulanan.destroy(); _fcCalBulanan = null; }
+
+  _fcCalBulanan = new FullCalendar.Calendar(el, {
+    initialView     : 'dayGridMonth',
+    locale          : 'id',
+    height          : 'auto',
+    firstDay        : 0, // Minggu
+    headerToolbar   : false, // kita pakai toolbar sendiri
+    dayMaxEvents    : 6,
+    events          : _fcBuildEvents(),
+    eventClick      : function(info) {
+      // Tutup popover "+more" FullCalendar sebelum buka detail
+      document.querySelectorAll('.fc-popover').forEach(p => p.remove());
+
+      const props = info.event.extendedProps;
+      if (props._src === 'kalender') {
+        const item = props._raw;
+        const tempId = 'fcbul_' + info.event.id;
+        _kalDetailMap[tempId] = item;
+        showKalDetail(tempId);
+      } else if (props._src === 'epurchasing') {
+        if (currentUser) showDetail(props._raw);
+      }
+    },
+    eventDidMount   : function(info) {
+      // Tooltip native
+      const d = info.event.extendedProps._raw;
+      if (!d) return;
+      const tgl = info.event.startStr + (info.event.endStr ? ' s.d. ' + info.event.endStr : '');
+      info.el.setAttribute('title',
+        (d.namaPaket || d.nama_paket || '') + '\n' +
+        (d.instansi || d.dinas || '') + '\n' +
+        (d.pejabat || '') + '\n' + tgl
+      );
+    }
+  });
+
+  _fcCalBulanan.render();
+
+  // Sync label bulan ke header kita
+  _fcSyncMonthLabel();
+}
+
+function _fcSyncMonthLabel() {
+  if (!_fcCalBulanan) return;
+  const d = _fcCalBulanan.getDate();
+  const monthNames = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+  const el = document.getElementById('cal-month-label');
+  if (el) el.textContent = `${monthNames[d.getMonth()]} ${d.getFullYear()}`;
+  calMonth = d.getMonth();
+  calYear  = d.getFullYear();
+}
+
 function changeMonth(delta) {
-  calMonth += delta;
-  if (calMonth > 11) { calMonth = 0; calYear++; }
-  if (calMonth < 0) { calMonth = 11; calYear--; }
-  renderCalendar();
+  if (_fcCalBulanan) {
+    if (delta > 0) _fcCalBulanan.next(); else _fcCalBulanan.prev();
+    _fcSyncMonthLabel();
+  } else {
+    calMonth += delta;
+    if (calMonth > 11) { calMonth = 0; calYear++; }
+    if (calMonth < 0) { calMonth = 11; calYear--; }
+  }
 }
 
 function goToToday() {
-  const now = new Date();
-  calMonth = now.getMonth();
-  calYear = now.getFullYear();
-  renderCalendar();
+  if (_fcCalBulanan) {
+    _fcCalBulanan.today();
+    _fcSyncMonthLabel();
+  } else {
+    const now = new Date();
+    calMonth = now.getMonth();
+    calYear = now.getFullYear();
+  }
 }
 
 function setCalMode(mode) {
   calDisplayMode = mode;
-  // Update button styles
   ['paket','dinas','pejabat'].forEach(m => {
     const btn = document.getElementById('cal-mode-'+m);
     if (!btn) return;
-    if (m === mode) {
-      btn.style.background = 'var(--primary)';
-      btn.style.color = '#fff';
-    } else {
-      btn.style.background = 'transparent';
-      btn.style.color = 'var(--text2)';
-    }
+    btn.style.background = m === mode ? 'var(--primary)' : 'transparent';
+    btn.style.color = m === mode ? '#fff' : 'var(--text2)';
   });
   renderCalendar();
 }
 
+// renderCalendar sekarang = refresh events di FullCalendar
 function renderCalendar() {
-  const monthNames = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
-  document.getElementById('cal-month-label').textContent = `${monthNames[calMonth]} ${calYear}`;
-
-  const pejabatFilter = document.getElementById('cal-filter-pejabat').value;
-  const opdFilter     = document.getElementById('cal-filter-opd').value;
-
-  let calData = allData.filter(d => {
-    if (pejabatFilter && d.pejabat !== pejabatFilter) return false;
-    if (opdFilter && d.instansi !== opdFilter) return false;
-    return true;
-  });
-
-  const today      = new Date(); today.setHours(0,0,0,0);
-  const firstOfMon = new Date(calYear, calMonth, 1);
-  const lastOfMon  = new Date(calYear, calMonth+1, 0);
-
-  // Build event map — setiap event muncul di SETIAP hari dalam rentang tglMulai–tglAkhir
-  // Struktur: key -> [ { event, spanPos:'start'|'mid'|'end'|'single', slotIdx, eventId } ]
-  const eventMap = {}; // key -> array of slot entries
-  const slotTracker = {}; // key -> array of eventIds per slot (to keep rows aligned)
-
-  // Assign unique id to each event
-  calData.forEach((d, idx) => { d._calId = idx; });
-
-  // Sort by tglMulai so earlier events get lower slots
-  const sorted = [...calData].sort((a,b) => {
-    const da = parseDate(a.tglMulai), db = parseDate(b.tglMulai);
-    return (da||0) - (db||0);
-  });
-
-  // Track slot usage per day: slotMap[key] = Set of eventIds occupying that slot
-  const daySlots = {}; // key -> array of eventId|null per slot
-
-  sorted.forEach(ev => {
-    const tM = parseDate(ev.tglMulai);
-    const tA = parseDate(ev.tglAkhir) || tM;
-    if (!tM) return;
-
-    // Clamp to visible month
-    const clampS = tM < firstOfMon ? new Date(firstOfMon) : new Date(tM);
-    const clampE = tA > lastOfMon  ? new Date(lastOfMon)  : new Date(tA);
-
-    // Find lowest available slot across ALL days of this event
-    let slot = 0;
-    outer: while (true) {
-      for (let d = new Date(clampS); d <= clampE; d.setDate(d.getDate()+1)) {
-        const k = d.getFullYear()+'-'+d.getMonth()+'-'+d.getDate();
-        if (!daySlots[k]) daySlots[k] = [];
-        if (daySlots[k][slot] != null) { slot++; continue outer; }
-      }
-      break;
-    }
-
-    // Assign slot for each day
-    for (let d = new Date(clampS); d <= clampE; d.setDate(d.getDate()+1)) {
-      const k = d.getFullYear()+'-'+d.getMonth()+'-'+d.getDate();
-      if (!daySlots[k]) daySlots[k] = [];
-      daySlots[k][slot] = ev._calId;
-
-      // Determine span position
-      const isStart = d.toDateString() === clampS.toDateString();
-      const isEnd   = d.toDateString() === clampE.toDateString();
-      let spanPos = isStart && isEnd ? 'single' : isStart ? 'start' : isEnd ? 'end' : 'mid';
-      // Week boundary: if Mon reset to start-like for display
-      if (!isStart && d.getDay() === 1) spanPos = (isEnd ? 'end' : 'mid') + '-weekstart';
-
-      if (!eventMap[k]) eventMap[k] = [];
-      eventMap[k].push({ ev, slot, spanPos });
-    }
-  });
-
-  // Build grid cells — Minggu pertama (startDow dari Minggu=0)
-  const firstDay = new Date(calYear, calMonth, 1);
-  const lastDay  = new Date(calYear, calMonth+1, 0);
-  const startDow = firstDay.getDay(); // 0=Min
-  const cells = [];
-  for (let i = 0; i < startDow; i++) {
-    cells.push({ date: new Date(calYear, calMonth, i-startDow+1), thisMonth: false });
+  if (_fcCalBulanan) {
+    _fcCalBulanan.removeAllEvents();
+    _fcCalBulanan.addEventSource(_fcBuildEvents());
+    _fcSyncMonthLabel();
+  } else {
+    initFcCalBulanan();
   }
-  for (let d = 1; d <= lastDay.getDate(); d++) {
-    cells.push({ date: new Date(calYear, calMonth, d), thisMonth: true });
-  }
-  while (cells.length % 7 !== 0) {
-    cells.push({ date: new Date(calYear, calMonth+1, cells.length-lastDay.getDate()-startDow+1), thisMonth: false });
-  }
+}
 
-  // Helper labels
-  function getEventLabel(e) {
-    if (calDisplayMode === 'dinas') {
-      const name = e.instansi || '-';
-      const short = name.replace(/^(Unit Pelaksana Teknis Daerah\s+)/i,'UPTD ')
-        .replace(/^(Badan\s+)/i,'Badan ').replace(/^(Dinas\s+)/i,'Dinas ')
-        .replace(/^(Kecamatan\s+)/i,'Kec. ').replace(/^(Kelurahan\s+)/i,'Kel. ')
-        .replace(/^(Sekda\s+-\s+)/i,'Sekda - ').replace(/^(Inspektorat\s+)/i,'Inspektorat ');
-      return short.length > 28 ? short.substring(0,26)+'…' : short;
-    } else if (calDisplayMode === 'pejabat') {
-      const name = (e.pejabat||'-').split(',')[0];
-      return name.length > 22 ? name.substring(0,20)+'…' : name;
-    } else {
-      const name = e.namaPaket || '-';
-      return name.length > 26 ? name.substring(0,24)+'…' : name;
-    }
-  }
+function _fixCalLabelWidths() {} // tidak diperlukan lagi
 
-  const body = document.getElementById('cal-body');
-  body.innerHTML = cells.map(cell => {
-    const isToday = cell.date.toDateString() === today.toDateString();
-    const key = cell.date.getFullYear()+'-'+cell.date.getMonth()+'-'+cell.date.getDate();
-    const entries = (eventMap[key] || []).sort((a,b) => a.slot - b.slot);
-
-    // Fill gaps with null so slots align across days
-    const maxSlot = entries.length ? entries[entries.length-1].slot : -1;
-    const slots = Array(maxSlot+1).fill(null);
-    entries.forEach(e => { slots[e.slot] = e; });
-
-    const MAX_SHOW = 3;
-    let shown = 0;
-    let moreCount = 0;
-    const evHtml = slots.map(entry => {
-      if (!entry) {
-        // Empty slot spacer (keeps alignment)
-        if (shown < MAX_SHOW) { shown++; return '<div class="cal-event-spacer"></div>'; }
-        return '';
-      }
-      if (shown >= MAX_SHOW) { moreCount++; return ''; }
-      shown++;
-
-      const ev = entry.ev;
-      const sp = entry.spanPos;
-      const cls = CAL_CLASS[ev.progres] || 'ev-default';
-
-      // Span class
-      const isWeekStart = cell.date.getDay() === 0 || sp.includes('weekstart');
-      let spanCls = '';
-      if (sp === 'single') spanCls = 'ev-span-single';
-      else if (sp === 'start' || isWeekStart) spanCls = 'ev-span-start';
-      else if (sp === 'end') spanCls = 'ev-span-end';
-      else spanCls = 'ev-span-mid';
-
-      // Show label only on start or week-start
-      const showLabel = sp === 'single' || sp === 'start' || isWeekStart;
-      const label = showLabel ? esc(getEventLabel(ev)) : '&nbsp;';
-      const tooltip = `${ev.namaPaket}\n${ev.instansi}\n${ev.pejabat}\nStatus: ${ev.progres||'-'}\n${fmtDate(ev.tglMulai)}${ev.tglAkhir?' – '+fmtDate(ev.tglAkhir):''}`;
-
-      return `<div class="cal-event ${cls} ${spanCls}" onclick='showDetail(${JSON.stringify(ev).replace(/'/g,"&#39;")})' title="${esc(tooltip)}">${label}</div>`;
-    }).join('');
-
-    return `<div class="cal-cell${!cell.thisMonth?' other-month':''}${isToday?' today':''}">
-      <div class="cal-date">${cell.date.getDate()}</div>
-      ${evHtml}
-      ${moreCount > 0 ? `<div class="cal-more" onclick="showDayEvents('${key}')">+${moreCount} lainnya</div>` : ''}
-    </div>`;
-  }).join('');
+function showKalDetailFromBulanan(calId) {
+  const item = (window._calBulananMap || {})[calId];
+  if (!item) return;
+  const tempId = 'kalbul_' + calId;
+  _kalDetailMap[tempId] = item;
+  showKalDetail(tempId);
 }
 
 function showDayEvents(key) {
@@ -3372,6 +3706,9 @@ function showDayEvents(key) {
   openModal();
 }
 
+
+
+// ============================================================
 // ============================================================
 // MODAL HELPERS
 // ============================================================
@@ -3434,7 +3771,9 @@ function switchKalTab(tab) {
     if (ganttDiv)   ganttDiv.style.display   = 'none';
     if (btnBulanan) { btnBulanan.style.background = 'var(--primary)'; btnBulanan.style.color = '#fff'; }
     if (btnGantt)   { btnGantt.style.background   = 'transparent'; btnGantt.style.color = 'var(--text2)'; }
-    renderCalendar();
+    // FullCalendar perlu updateSize setelah visible (karena sebelumnya display:none)
+    if (_fcCalBulanan) { setTimeout(() => { _fcCalBulanan.updateSize(); }, 50); }
+    else initFcCalBulanan();
   } else {
     if (bulananDiv) bulananDiv.style.display = 'none';
     if (ganttDiv)   ganttDiv.style.display   = 'block';
@@ -3448,12 +3787,12 @@ function switchKalTab(tab) {
 // ============================================================
 // TOAST
 // ============================================================
-function showToast(msg, type = '') {
+function showToast(msg, type = '', duration = 4000) {
   const el = document.getElementById('toast');
   el.textContent = msg;
   el.className = 'toast ' + type;
   el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), 4000);
+  setTimeout(() => el.classList.remove('show'), duration);
 }
 
 
@@ -3828,8 +4167,9 @@ document.addEventListener('drop', e => {
 
 // ============================================================
 // NEW UPDATE: HEATMAP BEBAN KERJA PEJABAT PENGADAAN
-// NEW UPDATE: Data dari sheet KalenderKerja via GAS getHeatmapData (endpoint khusus, lebih ringan)
-let _heatmapRawData = []; // simpan data mentah untuk filter/sort client-side
+// Data dari sheet KalenderKerja via GAS getHeatmapData + getCalendarData
+let _heatmapRawData = [];       // data agregat per pejabat
+let _kalendarRawForHeatmap = []; // data mentah kalender untuk hitung per-minggu
 
 async function loadHeatmapData() {
   const bodyEl = document.getElementById('heatmap-body');
@@ -3837,28 +4177,49 @@ async function loadHeatmapData() {
   bodyEl.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text3);font-size:13px"><div class="spinner" style="margin:0 auto 12px"></div>Memuat data heatmap...</div>';
 
   try {
-    const url = GAS_URL + '?action=getHeatmapData';
-    const res = await xhrGet(url);
-    _heatmapRawData = (res && res.data) ? res.data : [];
+    // Ambil kedua endpoint paralel
+    const [res, resKal] = await Promise.all([
+      xhrGet(GAS_URL + '?action=getHeatmapData'),
+      xhrGet(GAS_URL + '?action=getCalendarData')
+    ]);
+    _heatmapRawData      = (res    && res.data)    ? res.data    : [];
+    _kalendarRawForHeatmap = (resKal && resKal.data) ? resKal.data : [];
     renderHeatmapFiltered();
   } catch(e) {
     bodyEl.innerHTML = '<div style="padding:20px;color:var(--danger);font-size:13px">❌ Gagal memuat data: ' + e.message + '</div>';
   }
 }
 
-// NEW UPDATE: Filter + Sort client-side tanpa request ulang ke server
+
+// Filter metode dengan toleransi Tender/Seleksi
+function _metodeMatch(metode, filter) {
+  if (!filter) return true;
+  const m = (metode || '').toLowerCase();
+  const f = filter.toLowerCase();
+  if (f === 'tender/seleksi') return m.includes('tender') || m.includes('seleksi');
+  return m === f;
+}
+
+// ── renderHeatmapFiltered — filter metode + sort client-side ──
 function renderHeatmapFiltered() {
   const metodeFilter = (document.getElementById('heatmap-filter-metode')?.value || '').trim();
   const sortBy       = (document.getElementById('heatmap-sort')?.value || 'aktif');
 
-  let data = [..._heatmapRawData];
+  let data = _heatmapRawData.map(r => {
+    if (!metodeFilter) return { ...r };
+    if (r.aktifPakets && r.totalPakets) {
+      const aktifFiltered = Object.entries(r.aktifPakets)
+        .filter(([,m]) => _metodeMatch(m, metodeFilter)).length;
+      const totalFiltered = Object.entries(r.totalPakets)
+        .filter(([,m]) => _metodeMatch(m, metodeFilter)).length;
+      return { ...r, aktif: aktifFiltered, total: totalFiltered };
+    }
+    const metodes = r.metodes || [];
+    const match = metodes.some(m => _metodeMatch(m, metodeFilter));
+    if (!match) return { ...r, aktif: 0, total: 0 };
+    return { ...r };
+  }).filter(r => !metodeFilter || r.total > 0);
 
-  // Filter metode
-  if (metodeFilter) {
-    data = data.filter(r => (r.metode || '') === metodeFilter || (r.metodes || []).includes(metodeFilter));
-  }
-
-  // Sort
   if (sortBy === 'total') {
     data.sort((a,b) => b.total - a.total || b.aktif - a.aktif);
   } else if (sortBy === 'nama') {
@@ -3870,8 +4231,7 @@ function renderHeatmapFiltered() {
   renderHeatmap(data);
 }
 
-// NEW UPDATE: renderHeatmap menerima data pre-aggregated dari getHeatmapData
-// Format: [{ pejabat, aktif, total }, ...]
+// ── renderHeatmap — tabel aktif/total + status badge ──
 function renderHeatmap(data) {
   const bodyEl = document.getElementById('heatmap-body');
   if (!bodyEl) return;
@@ -3881,6 +4241,9 @@ function renderHeatmap(data) {
     return;
   }
 
+  // Nilai maks aktif untuk skala relatif badge
+  const maxAktif = Math.max(1, ...data.map(r => r.aktif));
+
   let html = `<table style="width:100%;border-collapse:collapse;font-size:13px">
     <thead>
       <tr style="background:#f8fafc;border-bottom:2px solid var(--border)">
@@ -3888,31 +4251,43 @@ function renderHeatmap(data) {
         <th style="padding:10px 14px;text-align:left;font-weight:700;color:var(--text2)">Pejabat Pengadaan</th>
         <th style="padding:10px 14px;text-align:center;font-weight:700;color:var(--text2)">Paket Aktif</th>
         <th style="padding:10px 14px;text-align:center;font-weight:700;color:var(--text2)">Total Paket</th>
-        <th style="padding:10px 14px;text-align:center;font-weight:700;color:var(--text2)">Status Beban</th>
+        <th style="padding:10px 14px;text-align:center;font-weight:700;color:var(--text2)">Beban Relatif</th>
       </tr>
     </thead><tbody>`;
 
   data.forEach((r, i) => {
+    const ratio = maxAktif > 0 ? r.aktif / maxAktif : 0;
     let bg, textColor, statusLabel, statusIcon, borderColor;
-    if (r.aktif <= 2) {
+    if (ratio === 0) {
+      bg = '#f1f5f9'; textColor = '#64748b'; borderColor = '#cbd5e1'; statusLabel = 'Kosong'; statusIcon = '⚪';
+    } else if (ratio <= 0.33) {
       bg = '#d1fae5'; textColor = '#065f46'; borderColor = '#6ee7b7'; statusLabel = 'Ringan'; statusIcon = '🟢';
-    } else if (r.aktif <= 5) {
-      bg = '#fef3c7'; textColor = '#78350f'; borderColor = '#fcd34d'; statusLabel = 'Normal'; statusIcon = '🟡';
+    } else if (ratio <= 0.66) {
+      bg = '#fef3c7'; textColor = '#78350f'; borderColor = '#fcd34d'; statusLabel = 'Sedang'; statusIcon = '🟡';
     } else {
-      bg = '#fee2e2'; textColor = '#7f1d1d'; borderColor = '#fca5a5'; statusLabel = 'Tinggi'; statusIcon = '🔴';
+      bg = '#fee2e2'; textColor = '#7f1d1d'; borderColor = '#fca5a5'; statusLabel = 'Padat'; statusIcon = '🔴';
     }
+
+    // Bar visual beban relatif
+    const barWidth = Math.round(ratio * 100);
+    const barColor = ratio <= 0.33 ? '#10b981' : ratio <= 0.66 ? '#f59e0b' : '#ef4444';
 
     html += `<tr style="border-bottom:1px solid var(--border);background:${i%2===0?'#fff':'#fafafa'}">
       <td style="padding:10px 14px;color:var(--text3);font-weight:600">${i+1}</td>
-      <td style="padding:10px 14px;font-weight:600;color:var(--text1)">
+      <td style="padding:10px 14px;font-weight:600;color:var(--text)">
         <span style="font-size:16px;margin-right:8px">🏛️</span>${r.pejabat}
       </td>
       <td style="padding:10px 14px;text-align:center">
         <span style="font-size:20px;font-weight:800;color:${textColor}">${r.aktif}</span>
       </td>
       <td style="padding:10px 14px;text-align:center;color:var(--text3)">${r.total}</td>
-      <td style="padding:10px 14px;text-align:center">
-        <span style="display:inline-flex;align-items:center;gap:5px;background:${bg};color:${textColor};font-weight:700;font-size:12px;padding:4px 12px;border-radius:999px;border:1px solid ${borderColor}">${statusIcon} ${statusLabel}</span>
+      <td style="padding:10px 20px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="flex:1;background:#e2e8f0;border-radius:999px;height:6px;overflow:hidden">
+            <div style="width:${barWidth}%;height:100%;background:${barColor};border-radius:999px;transition:width 0.4s"></div>
+          </div>
+          <span style="display:inline-flex;align-items:center;gap:4px;background:${bg};color:${textColor};font-weight:700;font-size:11px;padding:3px 10px;border-radius:999px;border:1px solid ${borderColor};white-space:nowrap">${statusIcon} ${statusLabel}</span>
+        </div>
       </td>
     </tr>`;
   });
@@ -3922,10 +4297,257 @@ function renderHeatmap(data) {
 }
 
 // ============================================================
-// App dimulai publik — langsung loadData tanpa login
+// CALENDAR HEATMAP BEBAN KERJA
 // ============================================================
-// App dimulai publik — langsung loadData tanpa login
-updateNavForUser(); // sembunyikan nav-data dan tampilkan tombol login dari awal
+
+// Hitung load per hari — gabungkan allData (e-Purchasing) + _kalendarRawForHeatmap (PL & Tender)
+function buildDayLoadMap(pejabatFilter) {
+  const dayMap = {}; // 'YYYY-MM-DD' → count
+
+  // ── Sumber 1: allData (e-Purchasing dari form) ──
+  const paketLatest = {};
+  allData.forEach(d => {
+    if (pejabatFilter && (d.pejabat || '') !== pejabatFilter) return;
+    const key = (d.instansi||'') + '||' + (d.noRUP || d.namaPaket || '');
+    if (!paketLatest[key] || d.row > paketLatest[key].row) paketLatest[key] = d;
+  });
+
+  Object.values(paketLatest).forEach(d => {
+    const tM = parseDate(d.tglMulai);
+    const tA = parseDate(d.tglAkhir) || tM;
+    if (!tM) return;
+    for (let d2 = new Date(tM); d2 <= tA; d2.setDate(d2.getDate()+1)) {
+      const k = _fmtHmDate(d2);
+      dayMap[k] = (dayMap[k] || 0) + 1;
+    }
+  });
+
+  // ── Sumber 2: _kalendarRawForHeatmap (Pengadaan Langsung, Tender, dsb) ──
+  (_kalendarRawForHeatmap || []).forEach(item => {
+    if (pejabatFilter && (item.pejabat || '') !== pejabatFilter) return;
+    const tM = item.tanggal_mulai ? new Date(item.tanggal_mulai) : null;
+    const tA = item.tanggal_selesai ? new Date(item.tanggal_selesai) : tM;
+    if (!tM || isNaN(tM)) return;
+    for (let d2 = new Date(tM); d2 <= tA; d2.setDate(d2.getDate()+1)) {
+      const k = _fmtHmDate(d2);
+      dayMap[k] = (dayMap[k] || 0) + 1;
+    }
+  });
+
+  return dayMap;
+}
+
+function _fmtHmDate(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const dd = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${dd}`;
+}
+
+function _hmLevel(count) {
+  if (!count || count < 0.5) return 0;
+  if (count < 3)  return 1;
+  if (count < 6)  return 2;
+  if (count < 10) return 3;
+  return 4;
+}
+
+function initCalHeatmap() {
+  // Gabungkan pejabat dari allData (e-Purchasing) + _kalendarRawForHeatmap (PL & Tender)
+  const sel = document.getElementById('cal-heatmap-pejabat');
+  if (sel) {
+    const pejabatSet = new Set([
+      ...allData.map(d => d.pejabat).filter(Boolean),
+      ...(_kalendarRawForHeatmap || []).map(d => d.pejabat).filter(Boolean)
+    ]);
+    const pejabats = Array.from(pejabatSet).sort();
+    sel.innerHTML = '<option value="">Semua Pejabat</option>';
+    pejabats.forEach(p => {
+      const o = document.createElement('option');
+      o.value = p; o.textContent = p;
+      sel.appendChild(o);
+    });
+  }
+  // Isi dropdown tahun
+  const yearSel = document.getElementById('cal-heatmap-year');
+  if (yearSel) {
+    const curYear = new Date().getFullYear();
+    yearSel.innerHTML = '';
+    [curYear-1, curYear, curYear+1].forEach(y => {
+      const o = document.createElement('option');
+      o.value = y; o.textContent = y;
+      if (y === curYear) o.selected = true;
+      yearSel.appendChild(o);
+    });
+  }
+  renderCalHeatmap();
+}
+
+function renderCalHeatmap() {
+  const body      = document.getElementById('cal-heatmap-body');
+  if (!body) return;
+
+  const pejabat   = (document.getElementById('cal-heatmap-pejabat')?.value || '').trim();
+  const year      = parseInt(document.getElementById('cal-heatmap-year')?.value || new Date().getFullYear());
+  const dayMap    = buildDayLoadMap(pejabat);
+
+  const MONTHS    = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+  const DAYS      = ['Sen','','Rab','','Jum','','Min'];
+  const today     = _fmtHmDate(new Date());
+
+  let html = '<div class="cal-hm-grid">';
+
+  // Label hari (kiri)
+  html += '<div class="cal-hm-day-label">';
+  DAYS.forEach(d => {
+    html += `<div class="cal-hm-day-name">${d}</div>`;
+  });
+  html += '</div>';
+
+  // Grid per bulan
+  html += '<div class="cal-hm-months">';
+
+  for (let mo = 0; mo < 12; mo++) {
+    const firstDay  = new Date(year, mo, 1);
+    const lastDay   = new Date(year, mo+1, 0);
+    // Mulai dari Senin (1) — hitung offset
+    let startDow = firstDay.getDay(); // 0=Min
+    startDow = startDow === 0 ? 6 : startDow - 1; // konversi ke 0=Sen
+
+    html += `<div class="cal-hm-month">`;
+    html += `<div class="cal-hm-month-label">${MONTHS[mo]}</div>`;
+    html += `<div class="cal-hm-weeks">`;
+
+    // Kumpulkan hari per minggu
+    const weeks = [];
+    let week = Array(startDow).fill(null); // padding awal
+    for (let d = 1; d <= lastDay.getDate(); d++) {
+      const date = new Date(year, mo, d);
+      const dow = date.getDay() === 0 ? 6 : date.getDay() - 1; // 0=Sen
+      week.push({ date, dateStr: _fmtHmDate(date) });
+      if (dow === 6 || d === lastDay.getDate()) {
+        while (week.length < 7) week.push(null); // padding akhir
+        weeks.push(week);
+        week = [];
+      }
+    }
+
+    weeks.forEach(wk => {
+      html += '<div class="cal-hm-week">';
+      wk.forEach(cell => {
+        if (!cell) {
+          html += '<div style="width:13px;height:13px"></div>';
+        } else {
+          const cnt   = dayMap[cell.dateStr] || 0;
+          const lvl   = _hmLevel(cnt);
+          const isToday = cell.dateStr === today;
+          const tipText = `${cell.dateStr}: ${Math.round(cnt)} paket`;
+          const border  = isToday ? 'outline:2px solid var(--primary);outline-offset:1px;' : '';
+          html += `<div class="cal-hm-day hm-${lvl}" style="${border}" title="${tipText}" onclick="showCalHmDay('${cell.dateStr}','${pejabat}')"></div>`;
+        }
+      });
+      html += '</div>';
+    });
+
+    html += '</div></div>'; // weeks, month
+  }
+
+  html += '</div></div>'; // months, grid
+  body.innerHTML = html;
+}
+
+function showCalHmDay(dateStr, pejabatFilter) {
+  const date   = new Date(dateStr);
+  const tLabel = `${date.getDate()} ${['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'][date.getMonth()]} ${date.getFullYear()}`;
+
+  // ── Sumber 1: allData (e-Purchasing) ──
+  const paketLatest = {};
+  allData.forEach(d => {
+    if (pejabatFilter && (d.pejabat||'') !== pejabatFilter) return;
+    const key = (d.instansi||'') + '||' + (d.noRUP||d.namaPaket||'');
+    if (!paketLatest[key] || d.row > paketLatest[key].row) paketLatest[key] = d;
+  });
+
+  const active = Object.values(paketLatest).filter(d => {
+    const tM = parseDate(d.tglMulai);
+    const tA = parseDate(d.tglAkhir) || tM;
+    if (!tM) return false;
+    return date >= tM && date <= tA;
+  }).sort((a,b) => (a.pejabat||'').localeCompare(b.pejabat||''));
+
+  const COLOR = {'Selesai Pengadaan':'var(--success)','Sedang Direviu':'var(--info)',
+    'Perlu Perbaikan':'var(--warning)','Ditolak':'var(--danger)',
+    'Proses e-Purchasing':'var(--purple)',''  :'var(--text3)'};
+
+  // ── Sumber 2: _kalendarRawForHeatmap (Pengadaan Langsung, Tender, dll) ──
+  const activeKal = (_kalendarRawForHeatmap || []).filter(item => {
+    if (pejabatFilter && (item.pejabat||'') !== pejabatFilter) return false;
+    const tM = item.tanggal_mulai ? new Date(item.tanggal_mulai) : null;
+    const tA = item.tanggal_selesai ? new Date(item.tanggal_selesai) : tM;
+    if (!tM || isNaN(tM)) return false;
+    return date >= tM && date <= tA;
+  }).sort((a,b) => (a.pejabat||'').localeCompare(b.pejabat||''));
+
+  // Warna border per metode
+  const METODE_COLOR = {
+    'Pengadaan Langsung' : '#f59e0b',
+    'Tender'             : '#ec4899',
+    'Seleksi'            : '#ec4899',
+    'E-Purchasing'       : '#7c3aed',
+  };
+  function metodeColor(m) {
+    const ml = (m||'').toLowerCase();
+    if (ml.includes('langsung'))   return '#f59e0b';
+    if (ml.includes('tender') || ml.includes('seleksi')) return '#ec4899';
+    return '#7c3aed';
+  }
+
+  let bodyHtml = '';
+
+  if (active.length === 0 && activeKal.length === 0) {
+    bodyHtml = '<div style="text-align:center;padding:32px;color:var(--text3)">Tidak ada paket pada tanggal ini</div>';
+  } else {
+    bodyHtml = '<div style="display:flex;flex-direction:column;gap:8px">';
+
+    // E-Purchasing
+    active.forEach(d => {
+      bodyHtml += `<div style="background:var(--bg);border-radius:8px;padding:10px 12px;border-left:3px solid ${COLOR[d.progres||'']||'var(--text3)'}">
+        <div style="font-size:12px;font-weight:700;color:var(--text)">${esc(d.namaPaket||'-')}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:3px">${esc(shortOPD(d.instansi||''))} · ${esc(d.pejabat||'-')} · ${getStatusBadge(d.progres)}</div>
+      </div>`;
+    });
+
+    // Pengadaan Langsung / Tender / dll
+    activeKal.forEach(item => {
+      const mColor = metodeColor(item.metode);
+      const metodeBadge = `<span style="background:${mColor}22;color:${mColor};font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;border:1px solid ${mColor}55">${esc(item.metode||'Kalender')}</span>`;
+      bodyHtml += `<div style="background:var(--bg);border-radius:8px;padding:10px 12px;border-left:3px solid ${mColor}">
+        <div style="font-size:12px;font-weight:700;color:var(--text)">${esc(item.nama_paket||'-')}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:3px">${esc(shortOPD(item.dinas||''))} · ${esc(item.pejabat||'-')} · ${metodeBadge}</div>
+      </div>`;
+    });
+
+    bodyHtml += '</div>';
+  }
+
+  const total = active.length + activeKal.length;
+  openDashPopout(`📅 ${tLabel}`, `${total} paket`, bodyHtml);
+}
+
+// ── App Init ───────────────────────────────────────────────────────────
+const _savedSession = restoreSession();
+if (_savedSession && _savedSession.username && _savedSession.role) {
+  currentUser = _savedSession;
+  isAuthenticated = (currentUser.role === 'pp' || currentUser.role === 'superadmin');
+  startSessionWatcher(); // lanjutkan watcher untuk sesi yang di-restore
+}
+
+// Event listener aktivitas user — perpanjang session saat aktif
+['click', 'keydown', 'scroll', 'touchstart'].forEach(ev =>
+  document.addEventListener(ev, _onUserActivity, { passive: true })
+);
+
+updateNavForUser();
 loadData();
 // Heatmap dimuat untuk SEMUA user (publik & login)
 setTimeout(() => loadHeatmapData(), 2000);
@@ -3933,6 +4555,69 @@ setTimeout(() => loadHeatmapData(), 2000);
 // ============================================================
 // POPOUT DETAIL DASHBOARD (Status & OPD)
 // ============================================================
+
+function closeKalDetail() {
+  document.getElementById('kal-detail-overlay').style.display = 'none';
+}
+
+function showKalDetail(rowOrId) {
+  const row = (typeof rowOrId === 'string') ? (_kalDetailMap[rowOrId] || {}) : rowOrId;
+  const overlay = document.getElementById('kal-detail-overlay');
+  const titleEl = document.getElementById('kal-detail-title');
+  const tbody   = document.getElementById('kal-detail-tbody');
+
+  titleEl.textContent = `Tahap Paket Saat Ini - [${row.id || '-'}] ${row.nama_paket || '-'}`;
+
+  // Cari semua baris KalenderKerja dengan nama paket sama
+  const namaLower = (row.nama_paket || '').toLowerCase().trim();
+  const related = kalData.filter(r =>
+    (r.nama_paket || '').toLowerCase().trim() === namaLower
+  ).sort((a, b) => (a.tanggal_mulai || '') < (b.tanggal_mulai || '') ? -1 : 1);
+
+  let rows = [];
+
+  // Coba parse kolom tahap sebagai JSON [{tahap, mulai, selesai}]
+  function parseTahap(r) {
+    const tahapStr = (r.tahap || '').trim();
+    if (tahapStr.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(tahapStr);
+        if (Array.isArray(parsed)) return parsed.map((t, i) => ({
+          no: i+1, tahap: t.tahap||'-', mulai: t.mulai||'-', sampai: t.selesai||'-', perubahan:'Tidak Ada'
+        }));
+      } catch(e) {}
+    }
+    // Fallback: split by " | "
+    const parts = tahapStr.split(/\s*\|\s*/).filter(Boolean);
+    if (parts.length > 1) return parts.map((t, i) => ({
+      no: i+1, tahap: t, mulai: i===0?r.tanggal_mulai||'-':'-',
+      sampai: i===parts.length-1?r.tanggal_selesai||'-':'-', perubahan:'Tidak Ada'
+    }));
+    return [{ no:1, tahap: tahapStr||'-', mulai: r.tanggal_mulai||'-', sampai: r.tanggal_selesai||'-', perubahan:'Tidak Ada' }];
+  }
+
+  if (related.length > 1) {
+    // Data lama: multi-baris per tahap
+    rows = related.flatMap((r, i) => parseTahap(r).map((t, j) => ({...t, no: rows.length+j+1})));
+    // Re-number
+    let n = 1;
+    rows = related.flatMap(r => parseTahap(r)).map(t => ({...t, no: n++}));
+  } else {
+    rows = parseTahap(row);
+  }
+
+  tbody.innerHTML = rows.map((r, i) => `
+    <tr style="background:${i%2===0?'#fff':'#f8fafc'};border-bottom:1px solid #e2e8f0">
+      <td style="padding:10px 14px;text-align:center;color:#6b7280;font-weight:600;font-size:13px">${r.no}</td>
+      <td style="padding:10px 14px;color:#1e293b;font-weight:600;font-size:13px">${esc(r.tahap)}</td>
+      <td style="padding:10px 14px;color:#475569;font-size:13px">${esc(r.mulai)}</td>
+      <td style="padding:10px 14px;color:#475569;font-size:13px">${esc(r.sampai)}</td>
+      <td style="padding:10px 14px;color:#94a3b8;font-size:12px">${esc(r.perubahan)}</td>
+    </tr>
+  `).join('');
+
+  overlay.style.display = 'flex';
+}
 
 function closeDashPopout() {
   document.getElementById('dash-popout-overlay').style.display = 'none';
@@ -4166,6 +4851,7 @@ let kalData     = [];   // semua data dari KalenderKerja
 let kalFiltered = [];   // hasil filter aktif
 let jadwalMonth = new Date().getMonth();
 let jadwalYear  = new Date().getFullYear();
+let _kalDetailMap = {}; // map id → row untuk popup detail
 
 async function loadKalenderData() {
   const bodyEl = document.getElementById('jadwal-cal-body');
@@ -4214,7 +4900,7 @@ function applyKalFilter() {
   const pejabat = (document.getElementById('kal-filter-pejabat-gantt')?.value || '').trim();
 
   kalFiltered = kalData.filter(row => {
-    if (metode  && (row.metode  || 'E-Purchasing') !== metode)  return false;
+    if (metode  && (row.metode  || '') !== metode)  return false;
     if (dinas   && (row.dinas   || '') !== dinas)   return false;
     if (pejabat && (row.pejabat || '') !== pejabat) return false;
     return true;
@@ -4246,6 +4932,7 @@ function changeJadwalMonth(dir) {
   renderJadwalKal();
 }
 
+
 function renderJadwalKal() {
   const body = document.getElementById('jadwal-cal-body');
   if (!body) return;
@@ -4259,15 +4946,32 @@ function renderJadwalKal() {
   const firstOfMonth = new Date(jadwalYear, jadwalMonth, 1);
   const lastOfMonth  = new Date(jadwalYear, jadwalMonth + 1, 0);
 
-  // Assign unique id
-  kalFiltered.forEach((row, i) => { row._kalId = i; });
+  // Selalu tampilkan per nama paket (1 bar per paket, rentang penuh)
+  const paketMap = {};
+  kalFiltered.forEach(row => {
+    const key = (row.nama_paket || '').toLowerCase().trim();
+    if (!key) return;
+    if (!paketMap[key]) {
+      paketMap[key] = { ...row };
+    } else {
+      const ex = paketMap[key];
+      if (row.tanggal_mulai   && row.tanggal_mulai   < ex.tanggal_mulai)   ex.tanggal_mulai   = row.tanggal_mulai;
+      if (row.tanggal_selesai && row.tanggal_selesai > ex.tanggal_selesai) ex.tanggal_selesai = row.tanggal_selesai;
+      // Gabungkan info tahap untuk tooltip
+      if (row.tahap) ex._tahapDetail = (ex._tahapDetail || ex.tahap || '') + '\n• ' + row.tahap;
+    }
+  });
+  const dataToRender = Object.values(paketMap);
 
-  // Sort by tanggal_mulai
-  const sorted = [...kalFiltered].filter(r => r.tanggal_mulai).sort((a,b) =>
-    new Date(a.tanggal_mulai) - new Date(b.tanggal_mulai));
+  // Assign unique id for slot tracking
+  dataToRender.forEach((row, i) => { row._renderId = i; });
 
+  // Build event map dengan slot system
   const eventMap  = {};
   const daySlots  = {};
+
+  const sorted = [...dataToRender].filter(r => r.tanggal_mulai).sort((a,b) =>
+    new Date(a.tanggal_mulai) - new Date(b.tanggal_mulai));
 
   sorted.forEach(row => {
     const tM = new Date(row.tanggal_mulai);
@@ -4277,15 +4981,15 @@ function renderJadwalKal() {
     const clampS = tM < firstOfMonth ? new Date(firstOfMonth) : new Date(tM);
     const clampE = tS > lastOfMonth  ? new Date(lastOfMonth)  : new Date(tS);
 
-    // Colour class
     let cls;
     if (tS < today)       cls = 'ev-jadwal-selesai';
     else if (tM <= today) cls = 'ev-jadwal-berjalan';
     else if ((row.metode||'').includes('E-Purchasing')) cls = 'ev-jadwal-epurchasing';
     else if ((row.metode||'').includes('Langsung'))     cls = 'ev-jadwal-langsung';
+    else if ((row.metode||'').includes('Tender') || (row.metode||'').includes('Seleksi')) cls = 'ev-jadwal-tender';
     else                  cls = 'ev-jadwal-rencana';
 
-    // Find lowest free slot across entire span
+    // Slot system
     let slot = 0;
     outer: while(true) {
       for (let d = new Date(clampS); d <= clampE; d.setDate(d.getDate()+1)) {
@@ -4296,28 +5000,23 @@ function renderJadwalKal() {
       break;
     }
 
-    // Place in slots & eventMap
     for (let d = new Date(clampS); d <= clampE; d.setDate(d.getDate()+1)) {
       const k = d.getFullYear()+'-'+d.getMonth()+'-'+d.getDate();
       if (!daySlots[k]) daySlots[k] = [];
-      daySlots[k][slot] = row._kalId;
+      daySlots[k][slot] = row._renderId;
 
       const isStart = d.toDateString() === clampS.toDateString();
       const isEnd   = d.toDateString() === clampE.toDateString();
-      const isWeekBoundary = !isStart && d.getDay() === 1; // Senin mulai dari index 0 (Sen)
-      // Jadwal grid starts Mon
-      const dayOfWeek = d.getDay() === 0 ? 6 : d.getDay() - 1; // 0=Sen … 6=Min
+      const dayOfWeek = d.getDay() === 0 ? 6 : d.getDay() - 1;
       const isWeekStart = !isStart && dayOfWeek === 0;
-
       let spanPos = isStart && isEnd ? 'single' : isStart ? 'start' : isEnd ? 'end' : 'mid';
-      if (isWeekStart) spanPos = isEnd ? 'end' : 'mid'; // treat as continuation but render label
 
       if (!eventMap[k]) eventMap[k] = [];
       eventMap[k].push({ row, cls, slot, spanPos, isStart: isStart || isWeekStart });
     }
   });
 
-  // Build cells — grid starts Monday
+  // Build cells
   const firstDay = new Date(jadwalYear, jadwalMonth, 1);
   const lastDay  = new Date(jadwalYear, jadwalMonth + 1, 0);
   let startOffset = firstDay.getDay() - 1;
@@ -4352,21 +5051,20 @@ function renderJadwalKal() {
       shown++;
 
       const sp  = entry.spanPos;
-      let spanCls = sp === 'single' ? 'ev-span-single'
+      const spanCls = sp === 'single' ? 'ev-span-single'
         : sp === 'start' ? 'ev-span-start'
         : sp === 'end'   ? 'ev-span-end'
         : 'ev-span-mid';
 
-      const label = entry.isStart
-        ? esc((entry.row.nama_paket||entry.row.tahap||'-').substring(0,22))
-        : '&nbsp;';
-      const tip = [entry.row.nama_paket, entry.row.tahap, entry.row.dinas,
-        entry.row.pejabat, (entry.row.metode||''),
-        entry.row.tanggal_mulai+' s.d. '+entry.row.tanggal_selesai,
-        entry.row.wa_pic ? '📱 '+entry.row.wa_pic : ''
-      ].filter(Boolean).join('\n');
+      const tglInfo = (entry.row.tanggal_mulai || '') + (entry.row.tanggal_selesai ? ' s.d. ' + entry.row.tanggal_selesai : '');
+      const tip = [ entry.row.nama_paket, entry.row.dinas, tglInfo ].filter(Boolean).join('\n');
 
-      return '<div class="cal-event '+entry.cls+' '+spanCls+'" title="'+esc(tip)+'">'+label+'</div>';
+      const rowId = 'kal_' + entry.row._renderId;
+      _kalDetailMap[rowId] = entry.row;
+
+      const barEl = `<div class="cal-event ${entry.cls} ${spanCls}" style="width:100%;pointer-events:none"></div>`;
+      const lblEl = entry.isStart ? `<div class="cal-ev-label cal-ev-label-dark" style="width:900px">${esc(entry.row.nama_paket || '-')}</div>` : '';
+      return `<div class="cal-event-wrap" onclick="showKalDetail('${rowId}')" title="${esc(tip)}">${barEl}${lblEl}</div>`;
     }).join('');
 
     return '<div class="cal-cell'
@@ -4377,7 +5075,6 @@ function renderJadwalKal() {
       +'</div>';
   }).join('');
 }
-
 
 // ============================================================
 // SPSE PARSER & SIMPAN
@@ -4393,52 +5090,90 @@ function parseSPSEClient(text) {
   };
 
   function parseTanggalID(str) {
+    str = (str||'').trim();
     // "13 Maret 2026" atau "13 Maret 2026 10:00"
-    str = str.trim();
-    const m = str.match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/);
+    const m = str.match(/(\d{1,2})\s+(Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember)\s+(\d{4})/i);
     if (m) {
       const bln = BULAN[m[2].toLowerCase()];
       if (bln) {
-        const y = m[3], mo = String(bln).padStart(2,'0'), d = String(m[1]).padStart(2,'0');
-        return `${y}-${mo}-${d}`;
+        return `${m[3]}-${String(bln).padStart(2,'0')}-${String(m[1]).padStart(2,'0')}`;
       }
     }
-    // fallback: yyyy-mm-dd / dd/mm/yyyy
-    const m2 = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    // yyyy-mm-dd
+    const m2 = str.match(/(\d{4})-(\d{2})-(\d{2})/);
     if (m2) return `${m2[1]}-${m2[2]}-${m2[3]}`;
-    const m3 = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+    // dd/mm/yyyy
+    const m3 = str.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
     if (m3) return `${m3[3]}-${String(m3[2]).padStart(2,'0')}-${String(m3[1]).padStart(2,'0')}`;
     return '';
   }
 
-  function extractAllDates(line) {
-    const dates = [];
-    // Format "DD Bulan YYYY"
-    const r = /(\d{1,2}\s+(?:Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember)\s+\d{4}(?:\s+\d{1,2}:\d{2})?)/gi;
+  // Regex untuk mencari semua tanggal "DD Bulan YYYY [HH:MM]" dalam sebuah string
+  const TGL_RE = /(\d{1,2}\s+(?:Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember)\s+\d{4}(?:\s+\d{1,2}:\d{2})?)/gi;
+  const YMD_RE = /(\d{4}-\d{2}-\d{2})/g;
+
+  function extractDatesFromLine(line) {
+    const found = [];
     let m;
-    while ((m = r.exec(line)) !== null) {
+    TGL_RE.lastIndex = 0;
+    while ((m = TGL_RE.exec(line)) !== null) {
       const d = parseTanggalID(m[1]);
-      if (d) dates.push({ val: d, idx: m.index });
+      if (d) found.push({ val: d, idx: m.index });
     }
-    // Format yyyy-mm-dd
-    const r2 = /(\d{4}-\d{2}-\d{2})/g;
-    while ((m = r2.exec(line)) !== null) {
-      dates.push({ val: m[1], idx: m.index });
+    YMD_RE.lastIndex = 0;
+    while ((m = YMD_RE.exec(line)) !== null) {
+      // Hindari duplikasi jika sudah ketangkap TGL_RE
+      if (!found.some(f => Math.abs(f.idx - m.index) < 5))
+        found.push({ val: m[1], idx: m.index });
     }
-    // Urutkan berdasarkan posisi di teks
-    dates.sort((a,b) => a.idx - b.idx);
-    return dates.map(d => d.val);
+    found.sort((a,b) => a.idx - b.idx);
+    return found;
   }
 
   const results = [];
-  const lines = text.split('\n');
 
+  // === FORMAT 1: SPSE tabel — "1Nama Tahap15 Januari 2026 17:0019 Januari 2026 09:59Tidak Ada"
+  // Seluruh teks digabung jadi satu (paste dari tabel SPSE tanpa newline per baris)
+  // Pisahkan berdasarkan pola: angka di awal yang langsung diikuti huruf kapital
+  // Contoh: "1Upload Dokumen..." → ["1", "Upload Dokumen..."]
+  const SPSE_TABLE_RE = /(\d+)([A-Z][^\d]*?)(\d{1,2}\s+(?:Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember)\s+\d{4}[^]*?(?=\d+[A-Z]|$))/gi;
+
+  // Coba parse sebagai tabel SPSE (semua dalam 1 blok)
+  const fullText = text.replace(/\s+/g, ' ').trim();
+  const tableMatches = [];
+  {
+    // Split pada pola "angka + huruf kapital" yang menandai awal baris baru
+    // Contoh input: "1Upload Dokumen Penawaran15 Januari 2026 17:0019 Januari 2026 09:59Tidak Ada2Pembukaan..."
+    const splitRE = /(?=\d+[A-ZÁÉÍÓÚ][a-záéíóú])/g;
+    const chunks = fullText.split(splitRE).filter(s => s.trim() && /^\d+[A-Z]/i.test(s.trim()));
+    chunks.forEach(chunk => {
+      chunk = chunk.trim();
+      // Hapus nomor di awal: "1", "2", "10" dst
+      const noNomor = chunk.replace(/^\d+/, '').trim();
+      const dates = extractDatesFromLine(chunk);
+      if (dates.length >= 2) {
+        const firstDateIdx = chunk.indexOf(dates[0].val.slice(0,4)); // cari tahun di posisi pertama
+        // Cari posisi tanggal pertama dalam teks asli
+        const tglRE2 = /(\d{1,2}\s+(?:Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember))/i;
+        const mPos = noNomor.match(tglRE2);
+        const tahap = mPos ? noNomor.slice(0, mPos.index).replace(/\s+$/, '').trim() : noNomor;
+        if (tahap) {
+          tableMatches.push({ tahap, tanggal_mulai: dates[0].val, tanggal_selesai: dates[1].val });
+        }
+      }
+    });
+  }
+
+  if (tableMatches.length) return tableMatches;
+
+  // === FORMAT 2: Per baris (format lama — tab/spasi/separator)
+  const lines = text.split('\n');
   for (let line of lines) {
     line = line.trim();
     if (!line) continue;
 
-    // Hapus nomor baris di awal: "1   " atau "1."
-    line = line.replace(/^\d+[\.\s]+/, '').trim();
+    // Hapus nomor baris di awal: "1 " atau "1." atau "1\t"
+    line = line.replace(/^\d+[\.\s\t]+/, '').trim();
     if (!line) continue;
 
     // Coba split by · atau |
@@ -4453,16 +5188,13 @@ function parseSPSEClient(text) {
     }
 
     // Ekstrak semua tanggal dari baris
-    const dates = extractAllDates(line);
+    const dates = extractDatesFromLine(line);
     if (dates.length >= 2) {
-      // Nama tahap = teks sebelum tanggal pertama
-      // Cari posisi tanggal pertama (bulan atau yyyy)
-      const firstDateMatch = line.match(/\d{1,2}\s+(?:Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember)|\d{4}-\d{2}-\d{2}/i);
-      const tahap = firstDateMatch
-        ? line.slice(0, firstDateMatch.index).replace(/[\-–:·]+$/, '').trim()
-        : 'Tahap';
+      const tglRE2 = /(\d{1,2}\s+(?:Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember)|\d{4}-\d{2}-\d{2})/i;
+      const mPos = line.match(tglRE2);
+      const tahap = mPos ? line.slice(0, mPos.index).replace(/[\-–:·\s]+$/, '').trim() : 'Tahap';
       if (tahap) {
-        results.push({ tahap, tanggal_mulai: dates[0], tanggal_selesai: dates[1] });
+        results.push({ tahap, tanggal_mulai: dates[0].val, tanggal_selesai: dates[1].val });
       }
     }
   }
@@ -4514,6 +5246,7 @@ async function simpanJadwalSPSE() {
   errEl.style.display = 'none';
 
   if (!namaPaket) { errEl.style.display='block'; errEl.textContent='❌ Nama paket wajib diisi'; return; }
+  if (!dinas) { errEl.style.display='block'; errEl.textContent='❌ Pilih Dinas / OPD terlebih dahulu'; return; }
   if (!_spsePreviewData.length) { errEl.style.display='block'; errEl.textContent='❌ Tidak ada jadwal terdeteksi. Periksa format teks SPSE.'; return; }
 
   // NEW UPDATE: sertakan wa_pic di setiap item
@@ -4554,7 +5287,35 @@ async function simpanJadwalSPSE() {
 function toggleSpsePanel() {
   const p = document.getElementById('spse-panel');
   if (!p) return;
-  p.style.display = (p.style.display === 'none' || !p.style.display) ? 'block' : 'none';
+
+  const isOpening = p.style.display === 'none' || !p.style.display;
+  p.style.display = isOpening ? 'block' : 'none';
+
+  if (isOpening && currentUser) {
+    // Auto-fill Pejabat Pengadaan dari nama login
+    const pejabatEl = document.getElementById('spse-pejabat');
+    if (pejabatEl) pejabatEl.value = currentUser.displayName || '';
+
+    // Isi dropdown Dinas dari instansiList PP
+    const dinasSel = document.getElementById('spse-dinas');
+    if (dinasSel) {
+      const list = currentUser.instansiList && currentUser.instansiList.length
+        ? currentUser.instansiList
+        : (currentUser.instansi ? [currentUser.instansi] : []);
+
+      // Rebuild dropdown
+      dinasSel.innerHTML = '<option value="">Pilih Dinas / OPD</option>';
+      list.forEach(ins => {
+        if (!ins) return;
+        const o = document.createElement('option');
+        o.value = ins; o.textContent = ins;
+        dinasSel.appendChild(o);
+      });
+
+      // Jika hanya 1 instansi, pilih otomatis
+      if (list.length === 1) dinasSel.value = list[0];
+    }
+  }
 }
 
 // ============================================================
