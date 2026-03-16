@@ -257,19 +257,38 @@
   /* STATUS BAR CHART */
   .status-bar-list { display: flex; flex-direction: column; gap: 10px; }
 
-  .status-bar-item { display: flex; flex-direction: column; gap: 4px; }
+  .status-bar-item { display: flex; flex-direction: column; gap: 4px; cursor: pointer; border-radius: 8px; padding: 6px 8px; margin: 0 -8px; transition: background 0.15s; }
+  .status-bar-item:hover { background: var(--bg); }
   .status-bar-top { display: flex; justify-content: space-between; align-items: center; }
   .status-bar-name { font-size: 12px; font-weight: 600; color: var(--text2); }
   .status-bar-count { font-size: 12px; font-weight: 700; color: var(--text); }
   .status-bar-track { height: 8px; background: var(--bg); border-radius: 99px; overflow: hidden; }
   .status-bar-fill { height: 100%; border-radius: 99px; transition: width 1s ease; }
 
+  /* Popout Detail Dashboard */
+  .dash-popout-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+    z-index: 800; display: flex; align-items: center; justify-content: center; padding: 20px;
+  }
+  .dash-popout {
+    background: #fff; border-radius: 16px; width: 100%; max-width: 680px;
+    max-height: 85vh; display: flex; flex-direction: column;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.25); overflow: hidden;
+  }
+  .dash-popout-header {
+    padding: 16px 20px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+  }
+  .dash-popout-body { overflow-y: auto; padding: 16px 20px; flex: 1; }
+
   /* TOP OPD */
   .opd-list { display: flex; flex-direction: column; gap: 8px; }
   .opd-item {
     display: flex; align-items: center; gap: 10px;
     padding: 10px 12px; background: var(--bg); border-radius: 8px;
+    cursor: pointer; transition: background 0.15s;
   }
+  .opd-item:hover { background: var(--border); }
 
   .opd-rank {
     width: 24px; height: 24px; border-radius: 6px;
@@ -1299,6 +1318,20 @@
   </div>
 </div>
 
+<!-- POPOUT: DETAIL STATUS / OPD DASHBOARD -->
+<div class="dash-popout-overlay" id="dash-popout-overlay" style="display:none" onclick="if(event.target===this)closeDashPopout()">
+  <div class="dash-popout">
+    <div class="dash-popout-header">
+      <div>
+        <div style="font-size:15px;font-weight:700;color:var(--text)" id="dash-popout-title">Detail</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:2px" id="dash-popout-sub"></div>
+      </div>
+      <button onclick="closeDashPopout()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text3);line-height:1;padding:4px">×</button>
+    </div>
+    <div class="dash-popout-body" id="dash-popout-body"></div>
+  </div>
+</div>
+
 <!-- MODAL: FORM PENGAJUAN BARU -->
 <div class="modal-overlay" id="form-modal-overlay" onclick="formOverlayClick(event)" style="z-index:600">
   <div class="modal" id="form-modal" style="max-width:680px;width:95%;max-height:90vh;overflow-y:auto" onclick="event.stopPropagation()">
@@ -1689,8 +1722,8 @@ function loginSuccess() {
     else loadKalenderData();
   }
   showToast('✅ Selamat datang, ' + currentUser.displayName + '!', 'success');
-  // NEW UPDATE: re-render dashboard setelah login agar nomor WA pejabat tampil
-  setTimeout(() => { renderDashboard(); loadHeatmapData(); }, 300);
+  // Re-render dashboard setelah login agar nomor WA pejabat tampil
+  setTimeout(() => { renderDashboard(); }, 300);
 }
 
 function updateNavForUser() {
@@ -2246,7 +2279,7 @@ function renderDashboard() {
   ];
 
   document.getElementById('status-bars').innerHTML = bars.map(b => `
-    <div class="status-bar-item">
+    <div class="status-bar-item" onclick="showDashPopoutStatus('${esc(b.label)}')">
       <div class="status-bar-top">
         <span class="status-bar-name">${b.label}</span>
         <span class="status-bar-count" title="${b.count} paket · ${b.instansi} instansi">
@@ -2267,7 +2300,7 @@ function renderDashboard() {
   });
   const topOPD = Object.entries(opdPaketCount).sort((a,b)=>b[1]-a[1]).slice(0,6);
   document.getElementById('top-opd').innerHTML = topOPD.map(([name,cnt],i) => `
-    <div class="opd-item">
+    <div class="opd-item" onclick="showDashPopoutOPD('${esc(name)}')">
       <div class="opd-rank">${i+1}</div>
       <div class="opd-name"><span title="${esc(name)}">${esc(shortOPD(name))}</span></div>
       <div class="opd-count">${cnt} paket</div>
@@ -3829,8 +3862,107 @@ function renderHeatmap(data) {
 // App dimulai publik — langsung loadData tanpa login
 updateNavForUser(); // sembunyikan nav-data dan tampilkan tombol login dari awal
 loadData();
-// NEW UPDATE: Load heatmap saat init
+// Heatmap dimuat untuk SEMUA user (publik & login)
 setTimeout(() => loadHeatmapData(), 2000);
+
+// ============================================================
+// POPOUT DETAIL DASHBOARD (Status & OPD)
+// ============================================================
+
+function closeDashPopout() {
+  document.getElementById('dash-popout-overlay').style.display = 'none';
+}
+
+function openDashPopout(title, sub, bodyHtml) {
+  document.getElementById('dash-popout-title').textContent = title;
+  document.getElementById('dash-popout-sub').textContent   = sub;
+  document.getElementById('dash-popout-body').innerHTML    = bodyHtml;
+  document.getElementById('dash-popout-overlay').style.display = 'flex';
+}
+
+// Popout: klik Status Bar → daftar paket dengan status tsb
+function showDashPopoutStatus(statusLabel) {
+  const statusKey = statusLabel === 'Belum Diproses' ? '' : statusLabel;
+  // Ambil paket terbaru (dedup per RUP)
+  const paketLatest = {};
+  allData.forEach(d => {
+    const key = (d.instansi||'') + '||' + (d.noRUP||d.namaPaket||'');
+    if (!paketLatest[key] || d.row > paketLatest[key].row) paketLatest[key] = d;
+  });
+  const filtered = Object.values(paketLatest)
+    .filter(d => (d.progres||'') === statusKey)
+    .sort((a,b) => (b.timestamp||0) - (a.timestamp||0));
+
+  if (!filtered.length) {
+    openDashPopout(statusLabel, '0 paket', '<div style="text-align:center;padding:40px;color:var(--text3)">Tidak ada data</div>');
+    return;
+  }
+
+  const COLOR = {
+    'Selesai Pengadaan':'var(--success)','Sedang Direviu':'var(--info)',
+    'Perlu Perbaikan':'var(--warning)','Ditolak':'var(--danger)',
+    'Proses e-Purchasing':'var(--purple)',''  :'var(--text3)'
+  };
+  const color = COLOR[statusKey] || 'var(--text3)';
+
+  let html = `<div style="display:flex;flex-direction:column;gap:10px">`;
+  filtered.forEach(d => {
+    html += `<div style="background:var(--bg);border-radius:10px;padding:12px 14px;border-left:3px solid ${color};cursor:pointer"
+      onclick='closeDashPopout();showDetail(${JSON.stringify(d).replace(/'/g,"&#39;")})'>
+      <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px">${esc(d.namaPaket||'-')}</div>
+      <div style="font-size:11px;color:var(--text3);display:flex;gap:12px;flex-wrap:wrap">
+        <span>🏢 ${esc(shortOPD(d.instansi||'-'))}</span>
+        <span>👤 ${esc(d.pejabat||'-')}</span>
+        <span>📅 ${fmtDate(d.tglMulai)}</span>
+        ${d.anggaran ? `<span>💰 ${fmtMoney(d.anggaran)}</span>` : ''}
+      </div>
+    </div>`;
+  });
+  html += '</div>';
+
+  openDashPopout(statusLabel, filtered.length + ' paket · klik untuk detail', html);
+}
+
+// Popout: klik OPD → daftar paket dari OPD tsb
+function showDashPopoutOPD(opdName) {
+  const paketLatest = {};
+  allData.forEach(d => {
+    if ((d.instansi||'') !== opdName) return;
+    const key = (d.instansi||'') + '||' + (d.noRUP||d.namaPaket||'');
+    if (!paketLatest[key] || d.row > paketLatest[key].row) paketLatest[key] = d;
+  });
+  const filtered = Object.values(paketLatest)
+    .sort((a,b) => (b.timestamp||0) - (a.timestamp||0));
+
+  if (!filtered.length) {
+    openDashPopout(shortOPD(opdName), '0 paket', '<div style="text-align:center;padding:40px;color:var(--text3)">Tidak ada data</div>');
+    return;
+  }
+
+  const COLOR = {
+    'Selesai Pengadaan':'var(--success)','Sedang Direviu':'var(--info)',
+    'Perlu Perbaikan':'var(--warning)','Ditolak':'var(--danger)',
+    'Proses e-Purchasing':'var(--purple)',''  :'var(--text3)'
+  };
+
+  let html = `<div style="display:flex;flex-direction:column;gap:10px">`;
+  filtered.forEach(d => {
+    const color = COLOR[d.progres||''] || 'var(--text3)';
+    html += `<div style="background:var(--bg);border-radius:10px;padding:12px 14px;border-left:3px solid ${color};cursor:pointer"
+      onclick='closeDashPopout();showDetail(${JSON.stringify(d).replace(/'/g,"&#39;")})'>
+      <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px">${esc(d.namaPaket||'-')}</div>
+      <div style="font-size:11px;color:var(--text3);display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+        ${getStatusBadge(d.progres)}
+        <span>📅 ${fmtDate(d.tglMulai)}</span>
+        <span>👤 ${esc(d.pejabat||'-')}</span>
+        ${d.anggaran ? `<span>💰 ${fmtMoney(d.anggaran)}</span>` : ''}
+      </div>
+    </div>`;
+  });
+  html += '</div>';
+
+  openDashPopout(shortOPD(opdName), filtered.length + ' paket · klik untuk detail', html);
+}
 
 // ============================================================
 // PUBLIC LOGIN MODAL (Popup)
