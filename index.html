@@ -935,7 +935,7 @@
     </button>
 
     <!-- NEW UPDATE: Tutorial — OPD only -->
-    <button class="nav-item" id="btn-nav-tutorial" onclick="window.open('https://bpbjsurakarta.github.io/TutorDaftarEPurchasing/','_blank')" style="display:none">
+    <button class="nav-item" id="btn-nav-tutorial" onclick="window.open('https://tutorialdaftarepurchasing.pages.dev/','_blank')" style="display:none">
       <span class="nav-icon">📖</span>
       <span>Tutorial</span>
     </button>
@@ -956,10 +956,6 @@
     <button class="nav-item" onclick="window.open('https://lookerstudio.google.com/reporting/77b6cc2f-3db4-4ae8-b3e9-a30e3983f116','_blank')">
       <span class="nav-icon">📈</span>
       <span>Looker Studio</span>
-    </button>
-    <button class="nav-item" id="btn-nav-tutorial-public" onclick="window.open('https://bpbjsurakarta.github.io/TutorDaftarEPurchasing/','_blank')">
-      <span class="nav-icon">📖</span>
-      <span>Tutorial</span>
     </button>
     <button class="nav-item" id="nav-settings" onclick="showPage('settings')" style="display:none">
       <span class="nav-icon">⚙️</span>
@@ -1503,6 +1499,12 @@
       </button>
       <div style="margin-top:14px;font-size:11px;color:var(--text3);text-align:center">
         Hubungi BPBJ Surakarta untuk mendapatkan akun.
+      </div>
+      <div style="margin-top:10px;text-align:center">
+        <a href="https://tutorialdaftarepurchasing.pages.dev/" target="_blank"
+          style="font-size:12px;font-weight:700;color:var(--primary);text-decoration:none;display:inline-flex;align-items:center;gap:5px">
+          📖 Lihat Tutorial
+        </a>
       </div>
     </div>
   </div>
@@ -2058,7 +2060,6 @@ function updateNavForUser() {
     btnNavFormPengajuan: document.getElementById('btn-nav-form-pengajuan'), // menu Pengajuan Baru
     heroBtnPengajuan  : document.getElementById('hero-btn-pengajuan'),      // tombol hero
     btnNavTutorial    : document.getElementById('btn-nav-tutorial'),         // Tutorial (OPD only)
-    btnNavTutorialPub : document.getElementById('btn-nav-tutorial-public'),  // Tutorial (public)
   };
 
   const show = (el) => { if (el) el.style.display = ''; };
@@ -2077,12 +2078,11 @@ function updateNavForUser() {
   hide(elems.topbarUser);
 
   if (role === 'public') {
-    // === PUBLIC: Dashboard, Kalender Kerja, Tutorial, Login PP, Login OPD ===
+    // === PUBLIC: Dashboard, Kalender Kerja, Login PP, Login OPD ===
     show(elems.navLabelAkses);
     show(elems.btnNavLoginPP);
     show(elems.btnNavPengajuan);
     show(elems.navLabelLainnya);
-    show(elems.btnNavTutorialPub);
     _updateKalenderAuthState();
     return;
   }
@@ -2092,7 +2092,6 @@ function updateNavForUser() {
   hide(elems.btnNavLoginPP);
   hide(elems.btnNavPengajuan);
   hide(elems.navLabelLainnya);
-  hide(elems.btnNavTutorialPub);
   show(elems.btnNavLogout);
 
   // User info di sidebar & topbar
