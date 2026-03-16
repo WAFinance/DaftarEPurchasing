@@ -1500,12 +1500,6 @@
       <div style="margin-top:14px;font-size:11px;color:var(--text3);text-align:center">
         Hubungi BPBJ Surakarta untuk mendapatkan akun.
       </div>
-      <div style="margin-top:10px;text-align:center">
-        <a href="https://tutorialdaftarepurchasing.pages.dev/" target="_blank"
-          style="font-size:12px;font-weight:700;color:var(--primary);text-decoration:none;display:inline-flex;align-items:center;gap:5px">
-          📖 Lihat Tutorial
-        </a>
-      </div>
     </div>
   </div>
 </div>
@@ -2124,11 +2118,12 @@ function updateNavForUser() {
     hide(elems.navData);
     hide(elems.btnLihatSemua);
   } else {
-    // === PP / ADMIN / SUPERADMIN: Dashboard, Kalender Kerja, Data Pengajuan ===
+    // === PP / ADMIN / SUPERADMIN: Dashboard, Kalender Kerja, Data Pengajuan, Tutorial ===
     show(elems.navData);
     show(elems.btnLihatSemua);
     show(elems.settingsNav);
-    // PP tidak ada Pengajuan Baru & Tutorial
+    show(elems.btnNavTutorial);
+    // PP tidak ada Pengajuan Baru
     hide(elems.btnNavFormPengajuan);
     hide(elems.heroBtnPengajuan);
   }
