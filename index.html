@@ -3416,10 +3416,11 @@ function showDetail(d) {
 let _dokChecklistState = {};
 
 function setDokStatus(key, newStatus) {
-  if (!_currentDetailData) return;
+  const activeData = _currentDetailData || currentEditData;
+  if (!activeData) return;
   // Inisialisasi dari data existing jika belum
-  if (Object.keys(_dokChecklistState).length === 0 || _dokChecklistState._rowRef !== _currentDetailData.row) {
-    _dokChecklistState = { ...(parseStatusDok(_currentDetailData)), _rowRef: _currentDetailData.row };
+  if (Object.keys(_dokChecklistState).length === 0 || _dokChecklistState._rowRef !== activeData.row) {
+    _dokChecklistState = { ...(parseStatusDok(activeData)), _rowRef: activeData.row };
   }
 
   // Toggle: klik status yang sama → reset ke kosong
@@ -3733,12 +3734,9 @@ function _openEditModalInternal(d) {
         </div>`;
       }).join('')}
     </div>
-    <div style="margin-top:8px;margin-bottom:4px">
-      <input type="text" id="dok-catatan-pp" class="form-control" placeholder="Catatan review dokumen (opsional)" style="font-size:12px">
+    <div style="font-size:11px;color:var(--text3);margin-top:8px">
+      Status dokumen akan ikut tersimpan saat klik <strong>Simpan Perubahan</strong>.
     </div>
-    <button class="btn btn-sm" style="background:var(--info);color:#fff;width:100%;margin-bottom:4px" onclick="saveDokChecklistFromEdit()">
-      💾 Simpan Review Dokumen
-    </button>
     <hr class="divider">` : '';
 
   document.getElementById('modal-body').innerHTML = `
@@ -3803,14 +3801,6 @@ function _openEditModalInternal(d) {
   if (d.progres === 'Selesai Pengadaan') checkSelesaiStatus(true);
   openModal();
 }
-
-// Wrapper saveDokChecklist yang bisa dipanggil dari dalam edit modal
-async function saveDokChecklistFromEdit() {
-  await saveDokChecklist();
-  // Jika berhasil, tutup modal dan reload
-  setTimeout(() => loadData(), 1500);
-}
-
 
 function selectStatus(status, key) {
   document.getElementById('selected-status').value = status;
@@ -3942,8 +3932,30 @@ function previewDocLink(inputId, previewId) {
 }
 
 async function saveEdit() {
-  const status  = (document.getElementById('selected-status')?.value || '').trim();
+  const selectedStatus = (document.getElementById('selected-status')?.value || '').trim();
   const catatan = (document.getElementById('edit-catatan')?.value || '').trim();
+
+  // Gabungkan status dokumen existing + perubahan checklist di modal edit
+  const existingDok = parseStatusDok(currentEditData || {});
+  const mergedDok   = { ...existingDok };
+  ['kak','kertas','referensi'].forEach(k => {
+    if (_dokChecklistState[k] !== undefined) mergedDok[k] = _dokChecklistState[k];
+  });
+  delete mergedDok._rowRef;
+
+  const dokVals = ['kak','kertas','referensi'].map(k => mergedDok[k] || '');
+  const hasDokReview = dokVals.some(v => !!v);
+
+  // Jika belum pilih status tapi sudah review dokumen, turunkan status otomatis
+  let status = selectedStatus;
+  if (!status && hasDokReview) {
+    if (dokVals.some(v => v === 'tolak')) {
+      status = 'Perlu Perbaikan';
+    } else if (dokVals.every(v => v === 'ok')) {
+      status = 'Diterima';
+    }
+  }
+
   if (!status) { showToast('⚠️ Pilih status progres terlebih dahulu','error'); return; }
 
   // Catatan wajib kecuali status Diterima
@@ -3958,7 +3970,11 @@ async function saveEdit() {
 
   // Optimistic update — langsung update tampilan
   const idx = allData.findIndex(d => d.row === currentEditData.row);
-  if (idx !== -1) { allData[idx].progres = status; allData[idx].catatan = catatan; }
+  if (idx !== -1) {
+    allData[idx].progres = status;
+    allData[idx].catatan = catatan;
+    allData[idx].statusDok = JSON.stringify(mergedDok);
+  }
 
   closeModal();
   applyFilters();
@@ -3975,7 +3991,10 @@ async function saveEdit() {
     pejabat: currentEditData.pejabat || '',
     noRUP: currentEditData.noRUP || '',
     prevStatus: prevStatus,
-    prevCatatan: prevCatatan
+    prevCatatan: prevCatatan,
+    statusDok: JSON.stringify(mergedDok),
+    catatanDok: (document.getElementById('dok-catatan-pp')?.value || '').trim(),
+    username: currentUser?.displayName || currentUser?.username || '',
   }));
   const url = GAS_URL + '?action=update&data=' + payload;
 
@@ -4010,6 +4029,7 @@ async function saveEdit() {
     xhr.send();
   });
 }
+
 
 // ============================================================
 // SETUP APPS SCRIPT URL
@@ -4888,8 +4908,18 @@ const NOTIF_ICONS = {
   revisi_diminta   : '📋',
   revisi_dikirim   : '📤',
   dokumen_diterima : '✅',
+  pengajuan_baru   : '🆕',
   default          : '🔔',
 };
+
+function markFallbackNotifSeen(rowNum) {
+  if (!rowNum || !(currentUser && (currentUser.role === 'pp' || currentUser.role === 'superadmin'))) return;
+  const seenKey = 'epur_seen_pp_notif_' + (currentUser.username || currentUser.displayName || 'pp');
+  let seenRows = [];
+  try { seenRows = JSON.parse(localStorage.getItem(seenKey) || '[]'); } catch(e) { seenRows = []; }
+  const next = Array.from(new Set([Number(rowNum), ...(Array.isArray(seenRows) ? seenRows : [])].filter(Boolean))).slice(0, 300);
+  localStorage.setItem(seenKey, JSON.stringify(next));
+}
 
 async function loadNotifikasi() {
   if (!currentUser || !GAS_URL) return;
@@ -4897,42 +4927,102 @@ async function loadNotifikasi() {
     const ppInstansiList = currentUser.instansiList && currentUser.instansiList.length
       ? currentUser.instansiList.join('|')
       : (currentUser.instansi || '');
-    const qCommon = '&username=' + encodeURIComponent(currentUser.username || '')
-      + '&role='     + encodeURIComponent(currentUser.role     || '')
-      + '&instansi=' + encodeURIComponent(currentUser.instansi || '')
-      + '&instansiList=' + encodeURIComponent(ppInstansiList)
-      + '&displayName=' + encodeURIComponent(currentUser.displayName || '')
-      + '&pejabat=' + encodeURIComponent(currentUser.displayName || '');
 
-    // Fallback endpoint karena implementasi GAS bisa beda nama action per role
-    const candidateUrls = [
-      GAS_URL + '?action=getNotifikasi' + qCommon,
-      GAS_URL + '?action=getNotification' + qCommon,
-      currentUser.role === 'pp' || currentUser.role === 'superadmin'
-        ? GAS_URL + '?action=getNotifikasiPP' + qCommon
-        : GAS_URL + '?action=getNotifikasiOPD' + qCommon,
+    const common = {
+      username: currentUser.username || '',
+      role: currentUser.role || '',
+      instansi: currentUser.instansi || '',
+      instansiList: ppInstansiList,
+      displayName: currentUser.displayName || '',
+    };
+
+    const queryVariants = [
+      { ...common, pejabat: currentUser.displayName || '' },
+      { ...common, pejabat: currentUser.username || '' },
+      { ...common },
     ];
+    const actionVariants = [
+      'getNotifikasi',
+      'getNotification',
+      'getNotifications',
+      currentUser.role === 'pp' || currentUser.role === 'superadmin' ? 'getNotifikasiPP' : 'getNotifikasiOPD',
+      currentUser.role === 'pp' || currentUser.role === 'superadmin' ? 'getNotificationPP' : 'getNotificationOPD',
+    ];
+
+    const buildQuery = obj => Object.entries(obj)
+      .filter(([,v]) => String(v || '').trim() !== '')
+      .map(([k,v]) => '&' + encodeURIComponent(k) + '=' + encodeURIComponent(v))
+      .join('');
+
+    const candidateUrls = [];
+    actionVariants.forEach(action => {
+      queryVariants.forEach(q => {
+        candidateUrls.push(GAS_URL + '?action=' + action + buildQuery(q));
+      });
+    });
 
     let res = null;
     for (const url of candidateUrls) {
       res = await xhrGet(url, { noCache: true });
-      if (res && (res.status === 'ok' || Array.isArray(res.data) || Array.isArray(res.notifikasi))) break;
+      const hasArray = res && (Array.isArray(res.data) || Array.isArray(res.notifikasi) || Array.isArray(res.items));
+      if (res && (res.status === 'ok' || hasArray)) break;
     }
 
     // Normalisasi response shape
-    const notifArr = (res && Array.isArray(res.data)) ? res.data
+    let notifArr = (res && Array.isArray(res.data)) ? res.data
       : (res && Array.isArray(res.notifikasi)) ? res.notifikasi
+      : (res && Array.isArray(res.items)) ? res.items
       : [];
+
+    // Fallback khusus PP/Superadmin: jika backend notif kosong, buat notifikasi dari data pengajuan terbaru
+    if (!notifArr.length && (currentUser.role === 'pp' || currentUser.role === 'superadmin') && Array.isArray(allData) && allData.length) {
+      const norm = v => String(v || '').toLowerCase().replace(/kota surakarta/gi,'').replace(/\s+/g,' ').trim();
+      const myInstRaw = currentUser.role === 'superadmin'
+        ? []
+        : (currentUser.instansiList && currentUser.instansiList.length ? currentUser.instansiList : [currentUser.instansi]);
+      const myInstSet = new Set(myInstRaw.map(norm).filter(Boolean));
+      const inScope = d => {
+        if (currentUser.role === 'superadmin') return true;
+        const dinas = norm(d.instansi);
+        if (!dinas) return false;
+        for (const x of myInstSet) {
+          if (dinas === x || dinas.includes(x) || x.includes(dinas)) return true;
+        }
+        return false;
+      };
+
+      const seenKey = 'epur_seen_pp_notif_' + (currentUser.username || currentUser.displayName || 'pp');
+      let seenRows = [];
+      try { seenRows = JSON.parse(localStorage.getItem(seenKey) || '[]'); } catch(e) { seenRows = []; }
+      const seenSet = new Set((Array.isArray(seenRows) ? seenRows : []).map(Number));
+
+      const fresh = allData
+        .filter(d => inScope(d))
+        .filter(d => !seenSet.has(Number(d.row)))
+        .sort((a,b) => Number(b.row || 0) - Number(a.row || 0))
+        .slice(0, 20)
+        .map(d => ({
+          id: 'fallback-' + d.row,
+          tipe: 'pengajuan_baru',
+          pesan: 'Pengajuan baru dari OPD: ' + (d.instansi || '-'),
+          namaPaket: d.namaPaket || '',
+          row: Number(d.row || 0),
+          createdAt: d.timestamp || new Date().toISOString(),
+          dibaca: false,
+        }));
+
+      if (fresh.length) notifArr = fresh;
+    }
+
     const unreadCount = (res && typeof res.unread === 'number')
       ? res.unread
       : notifArr.filter(n => !n.dibaca).length;
 
-    if (res && (res.status === 'ok' || notifArr.length)) {
+    if (res && (res.status === 'ok' || notifArr.length) || notifArr.length) {
       _notifData   = notifArr;
       _notifUnread = unreadCount;
       updateNotifBadge();
       if (_notifPanelOpen) renderNotifList();
-
       // OPD: jika ada notifikasi perubahan status/perbaikan, sinkronkan data pengajuan agar status kartu ikut berubah
       if (currentUser.role === 'opd' && !_notifSyncingData) {
         const sig = _notifData.slice(0, 10).map(n => [n.id, n.dibaca ? 1 : 0, n.createdAt].join(':')).join('|');
@@ -4956,6 +5046,7 @@ async function loadNotifikasi() {
     console.warn('loadNotifikasi fetch error:', e.message);
   }
 }
+
 
 function updateNotifBadge() {
   const badge = document.getElementById('notif-badge');
@@ -5065,6 +5156,7 @@ async function onNotifClick(notifId, tipe, rowNum) {
       _notifUnread = Math.max(0, _notifUnread - 1);
       updateNotifBadge();
       renderNotifList();
+      if (String(notifId || '').startsWith('fallback-')) markFallbackNotifSeen(rowNum);
     } catch(e) {}
   }
 
@@ -5108,8 +5200,10 @@ async function deleteNotifikasi(notifId, silent = false) {
     }
   } catch(e) {}
 
+  const deleted = _notifData.find(n => n.id === notifId);
   _notifData = _notifData.filter(n => n.id !== notifId);
   _notifUnread = _notifData.filter(n => !n.dibaca).length;
+  if (String(notifId || '').startsWith('fallback-')) markFallbackNotifSeen(deleted && deleted.row);
   updateNotifBadge();
   renderNotifList();
   if (!silent) showToast('🗑️ Notifikasi dihapus', 'success');
