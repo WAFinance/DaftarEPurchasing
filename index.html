@@ -5335,10 +5335,34 @@ function showCalHmDay(dateStr, pejabatFilter) {
   const date   = new Date(dateStr);
   const tLabel = `${date.getDate()} ${['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'][date.getMonth()]} ${date.getFullYear()}`;
 
+  // Scope detail berdasarkan instansi user saat ini
+  const role = currentUser ? currentUser.role : 'public';
+  const normInst = s => String(s||'').toLowerCase().replace(/kota surakarta/gi,'').replace(/\s+/g,' ').trim();
+  const canAccessInstansi = (instansiName) => {
+    if (!currentUser) return false;
+    if (role === 'superadmin') return true;
+    if (role === 'opd') {
+      return normInst(instansiName) === normInst(currentUser.instansi || '');
+    }
+    if (role === 'pp') {
+      const list = currentUser.instansiList && currentUser.instansiList.length
+        ? currentUser.instansiList
+        : (currentUser.instansi ? [currentUser.instansi] : []);
+      if (!list.length) return true;
+      const target = normInst(instansiName);
+      return list.some(ins => {
+        const n = normInst(ins);
+        return n === target || n.includes(target) || target.includes(n);
+      });
+    }
+    return false;
+  };
+
   // ── Sumber 1: allData (e-Purchasing) ──
   const paketLatest = {};
   allData.forEach(d => {
     if (pejabatFilter && (d.pejabat||'') !== pejabatFilter) return;
+    if (!canAccessInstansi(d.instansi)) return;
     const key = (d.instansi||'') + '||' + (d.noRUP||d.namaPaket||'');
     if (!paketLatest[key] || d.row > paketLatest[key].row) paketLatest[key] = d;
   });
@@ -5357,6 +5381,7 @@ function showCalHmDay(dateStr, pejabatFilter) {
   // ── Sumber 2: _kalendarRawForHeatmap (Pengadaan Langsung, Tender, dll) ──
   const activeKal = (_kalendarRawForHeatmap || []).filter(item => {
     if (pejabatFilter && (item.pejabat||'') !== pejabatFilter) return false;
+    if (!canAccessInstansi(item.dinas)) return false;
     const tM = item.tanggal_mulai ? new Date(item.tanggal_mulai) : null;
     const tA = item.tanggal_selesai ? new Date(item.tanggal_selesai) : tM;
     if (!tM || isNaN(tM)) return false;
