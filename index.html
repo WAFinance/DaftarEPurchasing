@@ -146,6 +146,27 @@
 
   .nav-cta:hover { background: #fbbf24; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(245,158,11,0.4); }
 
+  .sidebar-opd-cta {
+    margin: 0 12px 10px;
+    background: linear-gradient(135deg, #34d399, #10b981);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 11px 12px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 800;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    text-decoration: none;
+    box-shadow: 0 6px 14px rgba(16,185,129,0.35);
+    transition: all 0.2s;
+  }
+  .sidebar-opd-cta:hover { transform: translateY(-1px); box-shadow: 0 8px 16px rgba(16,185,129,0.42); }
+
   .sidebar-footer {
     padding: 12px 16px;
     border-top: 1px solid rgba(255,255,255,0.1);
@@ -459,9 +480,18 @@
     margin-bottom: 16px;
   }
 
-  .detail-item { display: flex; flex-direction: column; gap: 2px; }
-  .detail-item-label { font-size: 11px; color: var(--text3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; }
-  .detail-item-value { font-size: 13px; color: var(--text); font-weight: 500; }
+  .detail-item {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+  .detail-item-label { font-size: 12px; color: var(--text3); font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
+  .detail-item-value { font-size: 15px; color: var(--text); font-weight: 600; text-align: right; }
 
   /* DOCUMENT CARDS */
   .doc-section-title {
@@ -851,6 +881,8 @@
     .nav-item { justify-content: center; padding: 10px; }
     .nav-cta { justify-content: center; }
     .nav-cta span { display: none; }
+    .sidebar-opd-cta { padding: 10px; }
+    .sidebar-opd-cta span:last-child { display: none; }
     .charts-row { grid-template-columns: 1fr; }
   }
 
@@ -1072,12 +1104,6 @@
       <span>Data Pengajuan</span>
     </button>
 
-    <!-- NEW UPDATE: Pengajuan Baru — OPD only (disembunyikan untuk public & PP) -->
-    <button class="nav-item" id="btn-nav-form-pengajuan" onclick="openFormModal()" style="display:none;background:rgba(16,185,129,0.15);border-left:3px solid #10b981">
-      <span class="nav-icon">📤</span>
-      <span>Pengajuan Baru</span>
-    </button>
-
     <!-- FIX #5: Pengajuan Saya — OPD only -->
     <button class="nav-item" id="nav-pengajuan-saya" onclick="showPage('pengajuan-opd')" style="display:none;background:rgba(245,158,11,0.12);border-left:3px solid #f59e0b">
       <span class="nav-icon">📋</span>
@@ -1116,6 +1142,10 @@
       <span>Logout</span>
     </button>
   </nav>
+  <button class="sidebar-opd-cta" id="sidebar-opd-cta" onclick="openFormModal()">
+    <span>➕</span>
+    <span>Pengajuan Baru</span>
+  </button>
   <div class="nav-user-info" id="nav-user-info" style="margin:0 12px 8px;padding:10px 12px;background:rgba(255,255,255,0.1);border-radius:8px;font-size:12px;color:rgba(255,255,255,0.8);display:none">
     <div style="font-weight:700;color:#fff" id="nav-user-name">-</div>
     <div style="font-size:11px;color:rgba(255,255,255,0.5)" id="nav-user-role">-</div>
@@ -1214,14 +1244,7 @@
     </div>
 
     <!-- NEW UPDATE: Heatmap Beban Kerja PP dari DATA_DASHBOARD + KalenderKerja -->
-    <div class="table-card" id="heatmap-card" style="position:relative">
-      <!-- FIX #2: Lock overlay untuk public — dikontrol oleh updateHeatmapVisibility() -->
-      <div id="heatmap-lock-overlay" style="display:none;position:absolute;inset:0;z-index:10;background:rgba(248,250,252,0.92);border-radius:var(--radius);align-items:center;justify-content:center;flex-direction:column;gap:10px;text-align:center;padding:24px">
-        <div style="font-size:36px">🔒</div>
-        <div style="font-size:14px;font-weight:700;color:var(--text)">Heatmap Beban Kerja</div>
-        <div style="font-size:12px;color:var(--text3);max-width:260px">Login sebagai PP atau OPD untuk melihat data beban kerja pejabat pengadaan</div>
-        <button class="btn btn-primary btn-sm" onclick="openPublicLoginModal('pp')" style="margin-top:4px">🔓 Login</button>
-      </div>
+    <div class="table-card" id="heatmap-card" style="position:relative;display:none">
       <div class="table-header">
         <div>
           <div class="card-title">🌡️ Heatmap Beban Kerja Pejabat Pengadaan</div>
@@ -1258,18 +1281,11 @@
     </div>
   </div>
 
-  <!-- CALENDAR HEATMAP BEBAN KERJA PEJABAT -->
-  <div class="table-card" id="cal-heatmap-card" style="margin-bottom:24px;position:relative">
-    <!-- FIX #2: Lock overlay untuk public -->
-    <div id="cal-heatmap-lock-overlay" style="display:none;position:absolute;inset:0;z-index:10;background:rgba(248,250,252,0.92);border-radius:var(--radius);align-items:center;justify-content:center;flex-direction:column;gap:10px;text-align:center;padding:24px">
-      <div style="font-size:36px">🔒</div>
-      <div style="font-size:14px;font-weight:700;color:var(--text)">Calendar Heatmap Beban Kerja</div>
-      <div style="font-size:12px;color:var(--text3);max-width:260px">Login untuk melihat kepadatan paket pengadaan per hari</div>
-      <button class="btn btn-primary btn-sm" onclick="openPublicLoginModal('pp')" style="margin-top:4px">🔓 Login</button>
-    </div>
+  <!-- HEATMAP KALENDAR KERJA PEJABAT -->
+  <div class="table-card" id="cal-heatmap-card" style="margin-bottom:24px;position:relative;display:none">
     <div class="table-header">
       <div>
-        <div class="card-title">📅 Calendar Heatmap Beban Kerja</div>
+        <div class="card-title">📅 Heatmap Kalendar Kerja Pejabat Pengadaan</div>
         <div class="card-sub" style="margin-bottom:0">Kepadatan paket pengadaan per hari</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -1429,6 +1445,10 @@
             <span style="display:inline-block;width:28px;height:10px;background:#ef4444;border-radius:2px"></span>Ditolak</span>
           <span style="display:flex;align-items:center;gap:5px">
             <span style="display:inline-block;width:28px;height:10px;background:#8b5cf6;border-radius:2px"></span>Proses e-Purchasing</span>
+          <span style="display:flex;align-items:center;gap:5px">
+            <span style="display:inline-block;width:28px;height:10px;background:#fef3c7;border:1px solid #f59e0b;border-radius:2px"></span>Pengadaan Langsung</span>
+          <span style="display:flex;align-items:center;gap:5px">
+            <span style="display:inline-block;width:28px;height:10px;background:#fce7f3;border:1px solid #ec4899;border-radius:2px"></span>Tender/Seleksi</span>
           <span style="display:flex;align-items:center;gap:5px">
             <span style="display:inline-block;width:28px;height:10px;background:#94a3b8;border-radius:2px"></span>Tanpa Status</span>
         </div>
@@ -1639,6 +1659,21 @@
         </div>
         <div id="settings-pwd-msg" style="font-size:12px;margin-bottom:12px;display:none"></div>
         <button class="btn btn-primary" onclick="doChangePasswordSettings()">💾 Simpan Password Baru</button>
+      </div>
+
+      <div class="chart-card" style="margin-bottom:16px;display:none" id="settings-admin-resetpwd-card">
+        <div class="card-title">🛠️ Reset Password Pengguna</div>
+        <div class="card-sub">Khusus Super Administrator untuk reset password akun PP/OPD</div>
+        <div class="form-group">
+          <div class="form-label">Username Akun</div>
+          <input type="text" id="admin-reset-username" class="form-control" placeholder="Contoh: febrian-pp / DINAS01">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Password Baru</div>
+          <input type="password" id="admin-reset-newpwd" class="form-control" placeholder="Minimal 6 karakter...">
+        </div>
+        <div id="admin-reset-msg" style="font-size:12px;margin-bottom:12px;display:none"></div>
+        <button class="btn btn-primary" onclick="doAdminResetPassword()">♻️ Reset Password</button>
       </div>
     </div>
   </div>
@@ -2285,6 +2320,7 @@ function updateNavForUser() {
     navData            : document.getElementById('nav-data'),
     btnLihatSemua      : document.getElementById('btn-lihat-semua'),
     btnNavFormPengajuan: document.getElementById('btn-nav-form-pengajuan'),
+    sidebarOpdCta      : document.getElementById('sidebar-opd-cta'),
     heroBtnPengajuan   : document.getElementById('hero-btn-pengajuan'),
     btnNavTutorial     : document.getElementById('btn-nav-tutorial'),
     notifBellWrap      : document.getElementById('notif-bell-wrap'),
@@ -2297,6 +2333,7 @@ function updateNavForUser() {
 
   hide(elems.btnNavLogout); hide(elems.navData); hide(elems.btnLihatSemua);
   hide(elems.btnNavFormPengajuan); hide(elems.heroBtnPengajuan);
+  hide(elems.sidebarOpdCta);
   hide(elems.btnNavTutorial); hide(elems.settingsNav);
   hide(elems.userInfo); hide(elems.topbarUser);
   hide(elems.notifBellWrap); hide(elems.navPengajuanSaya);
@@ -2337,7 +2374,7 @@ function updateNavForUser() {
   if (sr) sr.textContent = roleLabel;
 
   if (role === 'opd') {
-    show(elems.btnNavFormPengajuan);
+    showFlex(elems.sidebarOpdCta);
     show(elems.heroBtnPengajuan);
     show(elems.btnNavTutorial);
     show(elems.navPengajuanSaya);
@@ -2349,21 +2386,25 @@ function updateNavForUser() {
     show(elems.settingsNav);
     show(elems.btnNavTutorial);
     hide(elems.btnNavFormPengajuan);
+    hide(elems.sidebarOpdCta);
     hide(elems.heroBtnPengajuan);
     hide(elems.navPengajuanSaya);
   }
 
   _updateKalenderAuthState();
   updateHeatmapVisibility();
+
+  const adminResetCard = document.getElementById('settings-admin-resetpwd-card');
+  if (adminResetCard) adminResetCard.style.display = role === 'superadmin' ? 'block' : 'none';
 }
 
 // FIX #2: Kontrol visibilitas heatmap berdasarkan login state
 function updateHeatmapVisibility() {
-  const isLoggedIn = currentUser && currentUser.role !== 'public';
-  const hm  = document.getElementById('heatmap-lock-overlay');
-  const chm = document.getElementById('cal-heatmap-lock-overlay');
-  if (hm)  hm.style.display  = isLoggedIn ? 'none' : 'flex';
-  if (chm) chm.style.display = isLoggedIn ? 'none' : 'flex';
+  const isLoggedIn = !!currentUser;
+  const hmCard  = document.getElementById('heatmap-card');
+  const chmCard = document.getElementById('cal-heatmap-card');
+  if (hmCard)  hmCard.style.display  = isLoggedIn ? 'block' : 'none';
+  if (chmCard) chmCard.style.display = isLoggedIn ? 'block' : 'none';
 }
 
 function _updateKalenderAuthState() {
@@ -2454,6 +2495,50 @@ async function doChangePasswordSettings() {
     console.error('[changePassword] exception:', e);
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '💾 Simpan Password Baru'; }
+  }
+}
+
+async function doAdminResetPassword() {
+  const msgEl = document.getElementById('admin-reset-msg');
+  const user = (document.getElementById('admin-reset-username')?.value || '').trim();
+  const newPwd = (document.getElementById('admin-reset-newpwd')?.value || '').trim();
+  const btn = document.querySelector('#settings-admin-resetpwd-card .btn-primary');
+  const showMsg = (txt, ok) => {
+    if (!msgEl) return;
+    msgEl.style.display = 'block';
+    msgEl.textContent = txt;
+    msgEl.style.color = ok ? 'var(--success)' : 'var(--danger)';
+  };
+
+  if (!currentUser || currentUser.role !== 'superadmin') { showMsg('❌ Hanya super admin yang dapat reset password.', false); return; }
+  if (!user) { showMsg('❌ Username wajib diisi.', false); return; }
+  if (newPwd.length < 6) { showMsg('❌ Password baru minimal 6 karakter.', false); return; }
+
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Mereset...'; }
+
+  try {
+    const candidates = [
+      GAS_URL + '?action=adminResetPassword&username=' + encodeURIComponent(user) + '&newPassword=' + encodeURIComponent(newPwd) + '&by=' + encodeURIComponent(currentUser.username),
+      GAS_URL + '?action=resetPassword&username=' + encodeURIComponent(user) + '&newPassword=' + encodeURIComponent(newPwd) + '&by=' + encodeURIComponent(currentUser.username),
+    ];
+    let res = null;
+    for (const url of candidates) {
+      try {
+        res = await xhrGet(url);
+        if (res && res.status === 'ok') break;
+      } catch(e) {}
+    }
+    if (res && res.status === 'ok') {
+      showMsg('✅ Password berhasil direset untuk ' + user + '.', true);
+      document.getElementById('admin-reset-newpwd').value = '';
+      showToast('✅ Password akun berhasil direset', 'success');
+    } else {
+      showMsg('❌ Gagal reset password. Pastikan endpoint reset tersedia di Apps Script.', false);
+    }
+  } catch (e) {
+    showMsg('❌ Error: ' + e.message, false);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '♻️ Reset Password'; }
   }
 }
 
@@ -3052,6 +3137,7 @@ function renderDataTable() {
     // Tombol edit: hanya muncul jika PP login DAN instansi cocok
     const normI = (s) => (s||'').toLowerCase().replace(/\s+kota\s+surakarta/gi,'').trim();
     const canEdit = isAuthenticated && currentUser && (
+      currentUser.role === 'superadmin' ||
       !currentUser.instansi ||
       ppCanEditInstansi(d.instansi) ||
       d.pejabat === currentUser.displayName
@@ -3185,11 +3271,14 @@ function showDetail(d) {
             <div class="dok-checklist-icon">${info.icon}</div>
             <div style="flex:1;min-width:0">
               <div class="dok-checklist-label">${esc(dok.label)}</div>
-              <div style="display:flex;gap:8px;align-items:center;margin-top:3px">
-                <a href="${esc(dok.url)}" target="_blank" class="dok-checklist-link">👁️ Lihat</a>
-                <a href="${esc(dok.url)}" download target="_blank" class="dok-checklist-link">⬇️ Unduh</a>
-                ${revBadge}
+              <div style="display:flex;gap:8px;align-items:center;margin-top:3px;font-size:13px;color:var(--text2)">
+                <span>Dokumen tersedia</span>
               </div>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
+              <a href="${esc(dok.url)}" target="_blank" class="dok-checklist-link" style="font-size:13px;padding:5px 8px;background:var(--primary-bg);border-radius:6px">👁️ View</a>
+              <a href="${esc(dok.url)}" download target="_blank" class="dok-checklist-link" style="font-size:13px;padding:5px 8px;background:var(--success-bg);border-radius:6px">⬇️ Detail</a>
+              ${revBadge}
             </div>
             ${st ? `<span class="dok-status-badge ${st}">${info.label}</span>` : ''}
           </div>`;
@@ -3242,7 +3331,7 @@ function showDetail(d) {
   `;
 
   // FIX #4: Footer — hanya Tutup + Edit (untuk PP); OPD hanya Tutup + Upload Revisi jika ada yg ditolak
-  const _canEdit = _isPP && ppCanEditInstansi(d.instansi) && !['Ditolak','Selesai Pengadaan'].includes(d.progres);
+  const _canEdit = _isPP && (currentUser.role === 'superadmin' || ppCanEditInstansi(d.instansi)) && !['Ditolak','Selesai Pengadaan'].includes(d.progres);
   const adaTolak = Object.values(statusDokObj).some(v => v === 'tolak');
   const _canRevisi = _isOPD &&
     ['Perlu Perbaikan','Revisi Dikirim'].includes(d.progres) &&
@@ -3391,7 +3480,8 @@ function openEditModal(d) {
   // Cek apakah instansi data cocok dengan instansi PP
   // PP bisa edit jika: instansinya kosong (admin), atau instansi cocok, atau dia adalah pejabatnya
   const normInst = (s) => (s||'').toLowerCase().replace(/\s+kota\s+surakarta/gi,'').trim();
-  const canEdit = !currentUser.instansi ||
+  const canEdit = currentUser.role === 'superadmin' ||
+    !currentUser.instansi ||
     ppCanEditInstansi(d.instansi) ||
     d.pejabat === currentUser.displayName;
   if (!canEdit) {
@@ -4949,7 +5039,7 @@ let _kalendarRawForHeatmap = []; // data mentah kalender untuk hitung per-minggu
 async function loadHeatmapData() {
   const bodyEl = document.getElementById('heatmap-body');
   if (!bodyEl) return;
-  // FIX #2: Jangan load untuk public — hanya tampilkan lock overlay
+  // Public view: heatmap disembunyikan total
   if (!currentUser) {
     updateHeatmapVisibility();
     return;
@@ -5036,6 +5126,7 @@ function renderHeatmap(data) {
     </thead><tbody>`;
 
   data.forEach((r, i) => {
+    const canOpenDetail = !!currentUser && (currentUser.role === 'pp' || currentUser.role === 'superadmin');
     const ratio = maxAktif > 0 ? r.aktif / maxAktif : 0;
     let bg, textColor, statusLabel, statusIcon, borderColor;
     if (ratio === 0) {
@@ -5055,7 +5146,11 @@ function renderHeatmap(data) {
     html += `<tr style="border-bottom:1px solid var(--border);background:${i%2===0?'#fff':'#fafafa'}">
       <td style="padding:10px 14px;color:var(--text3);font-weight:600">${i+1}</td>
       <td style="padding:10px 14px;font-weight:600;color:var(--text)">
-        <span style="font-size:16px;margin-right:8px">🏛️</span>${r.pejabat}
+        <span style="font-size:16px;margin-right:8px">🏛️</span>
+        ${canOpenDetail
+          ? `<a href="javascript:void(0)" onclick="showDashPopoutPejabat(${JSON.stringify(r.pejabat).replace(/"/g,'&quot;')})" style="color:var(--primary);text-decoration:none">${esc(r.pejabat)} ↗</a>`
+          : esc(r.pejabat)
+        }
       </td>
       <td style="padding:10px 14px;text-align:center">
         <span style="font-size:20px;font-weight:800;color:${textColor}">${r.aktif}</span>
