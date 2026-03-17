@@ -2609,6 +2609,7 @@ function normalizeGASRow(r) {
     revRef1       : get(r, 'Link Referensi Revisi 1'),
     revKAK2       : get(r, 'Link KAK Revisi 2', 'KAK Revisi 2'),
     revKertas2    : get(r, 'Link Kertas Kerja Revisi 2', 'Kertas Kerja Revisi 2'),
+    revRef2       : get(r, 'Link Referensi Revisi 2'),
   };
 }
 
@@ -2664,6 +2665,8 @@ async function loadData(forceRefresh = false) {
   if (currentUser && currentUser.role === 'opd') {
     setTimeout(() => renderOPDPengajuan(), 300);
   }
+  // Sinkronkan notifikasi setelah data dimuat / refresh
+  if (currentUser) setTimeout(() => loadNotifikasi(), 200);
 }
 
 async function loadUserList(forceRefresh = false) {
@@ -3245,10 +3248,10 @@ function showDetail(d) {
 
   const statusDokObj = parseStatusDok(d);
   const dokList = [
-    { key: 'kak',       label: 'KAK / Kerangka Acuan Kerja', url: d.dokKAK,       revUrl: d.revKAK1 || d.revKAK2 },
-    { key: 'kertas',    label: 'Kertas Kerja',               url: d.dokKertas,    revUrl: d.revKertas1 || d.revKertas2 },
-    { key: 'referensi', label: 'Referensi Harga',            url: d.dokReferensi, revUrl: d.revRef1 },
-  ].filter(dok => dok.url);
+    { key: 'kak',       label: 'KAK / Kerangka Acuan Kerja', url: d.dokKAK,       revUrls: [d.revKAK1, d.revKAK2].filter(Boolean) },
+    { key: 'kertas',    label: 'Kertas Kerja',               url: d.dokKertas,    revUrls: [d.revKertas1, d.revKertas2].filter(Boolean) },
+    { key: 'referensi', label: 'Referensi Harga',            url: d.dokReferensi, revUrls: [d.revRef1, d.revRef2].filter(Boolean) },
+  ].filter(dok => dok.url || dok.revUrls.length);
 
   // FIX #4: Dokumen section — pure VIEW ONLY (tidak ada checklist di sini)
   let dokHtml = '';
@@ -3263,21 +3266,23 @@ function showDetail(d) {
           const st   = statusDokObj[dok.key] || '';
           const info = getDokStatusInfo(st);
           const cls  = st === 'ok' ? 'status-ok' : st === 'tolak' ? 'status-tolak' : st === 'revisi_dikirim' ? 'status-revisi_dikirim' : '';
-          const revBadge = dok.revUrl
-            ? `<a href="${esc(dok.revUrl)}" target="_blank" class="dok-checklist-link">📤 Lihat Revisi</a>` : '';
+          const logLinks = [
+            dok.url ? `<a href="${esc(dok.url)}" target="_blank" class="dok-checklist-link">📄 Dokumen Awal</a>` : '',
+            ...dok.revUrls.map((u, i) => `<a href="${esc(u)}" target="_blank" class="dok-checklist-link">📤 Revisi ${i+1}</a>`)
+          ].filter(Boolean).join(' ');
           return `
           <div class="dok-checklist-item ${cls}" style="cursor:default">
             <div class="dok-checklist-icon">${info.icon}</div>
             <div style="flex:1;min-width:0">
               <div class="dok-checklist-label">${esc(dok.label)}</div>
               <div style="display:flex;gap:8px;align-items:center;margin-top:3px;font-size:13px;color:var(--text2)">
-                <span>Dokumen tersedia</span>
+                <span>Log Dokumen:</span>
+                ${logLinks}
               </div>
             </div>
             <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
-              <a href="${esc(dok.url)}" target="_blank" class="dok-checklist-link" style="font-size:13px;padding:5px 8px;background:var(--primary-bg);border-radius:6px">👁️ View</a>
-              <a href="${esc(dok.url)}" target="_blank" rel="noopener" class="dok-checklist-link" style="font-size:13px;padding:5px 8px;background:var(--success-bg);border-radius:6px">⬇️ Download</a>
-              ${revBadge}
+              ${dok.url ? `<a href="${esc(dok.url)}" target="_blank" class="dok-checklist-link" style="font-size:13px;padding:5px 8px;background:var(--primary-bg);border-radius:6px">👁️ View</a>` : ''}
+              ${dok.url ? `<a href="${esc(dok.url)}" target="_blank" rel="noopener" class="dok-checklist-link" style="font-size:13px;padding:5px 8px;background:var(--success-bg);border-radius:6px">⬇️ Download</a>` : ''}
             </div>
             ${st ? `<span class="dok-status-badge ${st}">${info.label}</span>` : ''}
           </div>`;
@@ -4819,6 +4824,8 @@ let _notifData   = [];   // semua notifikasi
 let _notifUnread = 0;    // jumlah belum dibaca
 let _notifPanelOpen = false;
 let _notifInterval  = null;
+let _notifSyncSignature = '';
+let _notifSyncingData = false;
 
 const NOTIF_ICONS = {
   revisi_diminta   : '📋',
@@ -4830,18 +4837,40 @@ const NOTIF_ICONS = {
 async function loadNotifikasi() {
   if (!currentUser || !GAS_URL) return;
   try {
+    const ppInstansiList = currentUser.instansiList && currentUser.instansiList.length
+      ? currentUser.instansiList.join('|')
+      : (currentUser.instansi || '');
     const url = GAS_URL + '?action=getNotifikasi'
       + '&username=' + encodeURIComponent(currentUser.username || '')
       + '&role='     + encodeURIComponent(currentUser.role     || '')
-      + '&instansi=' + encodeURIComponent(currentUser.instansi || '');
+      + '&instansi=' + encodeURIComponent(currentUser.instansi || '')
+      + '&instansiList=' + encodeURIComponent(ppInstansiList)
+      + '&displayName=' + encodeURIComponent(currentUser.displayName || '');
 
-    const res = await xhrGet(url);
+    const res = await xhrGet(url, { noCache: true });
 
     if (res && res.status === 'ok') {
       _notifData   = res.data   || [];
       _notifUnread = res.unread || 0;
       updateNotifBadge();
       if (_notifPanelOpen) renderNotifList();
+
+      // OPD: jika ada notifikasi perubahan status/perbaikan, sinkronkan data pengajuan agar status kartu ikut berubah
+      if (currentUser.role === 'opd' && !_notifSyncingData) {
+        const sig = _notifData.slice(0, 10).map(n => [n.id, n.dibaca ? 1 : 0, n.createdAt].join(':')).join('|');
+        if (sig !== _notifSyncSignature) {
+          _notifSyncSignature = sig;
+          const hasStatusNotif = _notifData.some(n => {
+            const t = String(n.tipe || '').toLowerCase();
+            return t.includes('revisi') || t.includes('diterima') || t.includes('status');
+          });
+          if (hasStatusNotif) {
+            _notifSyncingData = true;
+            try { await loadData(true); } catch(e) {}
+            _notifSyncingData = false;
+          }
+        }
+      }
     } else if (res && res.status === 'error') {
       console.warn('loadNotifikasi server error:', res.message);
     }
@@ -4927,7 +4956,7 @@ async function onNotifClick(notifId, tipe, rowNum) {
   // Tandai dibaca
   if (notifId) {
     try {
-      await xhrGet(GAS_URL + '?action=readNotifikasi&notifId=' + encodeURIComponent(notifId));
+      await xhrGet(GAS_URL + '?action=readNotifikasi&notifId=' + encodeURIComponent(notifId), { noCache: true });
       const n = _notifData.find(x => x.id === notifId);
       if (n) n.dibaca = true;
       _notifUnread = Math.max(0, _notifUnread - 1);
@@ -4967,7 +4996,7 @@ async function markAllNotifRead() {
   const unreadIds = _notifData.filter(n => !n.dibaca).map(n => n.id);
   for (const id of unreadIds) {
     try {
-      await xhrGet(GAS_URL + '?action=readNotifikasi&notifId=' + encodeURIComponent(id));
+      await xhrGet(GAS_URL + '?action=readNotifikasi&notifId=' + encodeURIComponent(id), { noCache: true });
     } catch(e) {}
   }
   _notifData.forEach(n => n.dibaca = true);
@@ -4979,10 +5008,10 @@ async function markAllNotifRead() {
 
 function startNotifWatcher() {
   stopNotifWatcher();
-  // Poll notifikasi tiap 60 detik saat user aktif
+  // Poll notifikasi tiap 15 detik saat user aktif agar lebih realtime
   _notifInterval = setInterval(() => {
     if (currentUser) loadNotifikasi();
-  }, 60000);
+  }, 15000);
 }
 
 function stopNotifWatcher() {
@@ -5798,8 +5827,11 @@ function renderOPDPengajuan() {
   const statusFil = (document.getElementById('opd-filter-status')?.value || '').trim();
   const search    = (document.getElementById('opd-search')?.value || '').toLowerCase().trim();
 
-  // Filter data hanya instansi sendiri
-  let myData = allData.filter(d => normInst(d.instansi) === myInst);
+  // Filter data hanya instansi sendiri (toleran variasi penamaan)
+  let myData = allData.filter(d => {
+    const ins = normInst(d.instansi);
+    return ins === myInst || ins.includes(myInst) || myInst.includes(ins);
+  });
 
   // Dedup per RUP — ambil baris terbaru
   const dedupMap = {};
@@ -5863,7 +5895,7 @@ function renderOPDPengajuan() {
     const needsAction = ['Perlu Perbaikan','Revisi Dikirim'].includes(d.progres);
     const statusDokObj = parseStatusDok(d);
     const adaTolak     = Object.values(statusDokObj).some(v => v === 'tolak');
-    const showRevisi   = needsAction && adaTolak;
+    const showRevisi   = needsAction && (adaTolak || Object.keys(statusDokObj).length === 0);
 
     return `
     <div style="background:#fff;border-radius:12px;border:1px solid ${needsAction?'#fbbf24':'var(--border)'};
