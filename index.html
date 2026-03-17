@@ -970,6 +970,21 @@
   .notif-panel-title { font-size: 14px; font-weight: 700; color: var(--text); }
   .notif-panel-mark-all { font-size: 11px; color: var(--primary); cursor: pointer; font-weight: 600; }
   .notif-panel-mark-all:hover { text-decoration: underline; }
+  .notif-panel-actions { display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:flex-end; }
+  .notif-tab {
+    font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px;
+    border: 1px solid var(--border); color: var(--text3); cursor: pointer; background: #fff;
+  }
+  .notif-tab.active { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+  .notif-delete-btn {
+    font-size: 11px; font-weight: 600; color: #b91c1c; cursor: pointer;
+  }
+  .notif-delete-btn:hover { text-decoration: underline; }
+  .notif-item-delete {
+    border: none; background: transparent; color: #ef4444; cursor: pointer;
+    font-size: 14px; line-height: 1; padding: 4px 6px; border-radius: 6px;
+  }
+  .notif-item-delete:hover { background: #fee2e2; }
   .notif-list { flex: 1; overflow-y: auto; padding: 6px 0; }
   .notif-empty { text-align: center; padding: 32px; color: var(--text3); font-size: 13px; }
   .notif-item {
@@ -2028,7 +2043,12 @@
 <div class="notif-panel" id="notif-panel">
   <div class="notif-panel-header">
     <div class="notif-panel-title">🔔 Notifikasi</div>
-    <span class="notif-panel-mark-all" onclick="markAllNotifRead()">Tandai semua dibaca</span>
+    <div class="notif-panel-actions">
+      <span class="notif-tab active" id="notif-tab-aktif" onclick="setNotifView('aktif')">Aktif</span>
+      <span class="notif-tab" id="notif-tab-riwayat" onclick="setNotifView('riwayat')">Riwayat</span>
+      <span class="notif-panel-mark-all" id="notif-mark-all" onclick="markAllNotifRead()">Tandai semua dibaca</span>
+      <span class="notif-delete-btn" id="notif-clear-history" style="display:none" onclick="clearNotifHistory()">Hapus riwayat</span>
+    </div>
   </div>
   <div class="notif-list" id="notif-list">
     <div class="notif-empty">Memuat notifikasi...</div>
@@ -3238,9 +3258,26 @@ function renderDocCard(url, label) {
 // ============================================================
 let _currentDetailData = null;
 
-// Helper: parse statusDok JSON safely
+// Helper: parse statusDok JSON safely + normalisasi nilai status
 function parseStatusDok(d) {
-  try { return JSON.parse(d.statusDok || '{}'); } catch(e) { return {}; }
+  const normVal = v => {
+    const raw = String(v || '').toLowerCase().trim();
+    if (!raw) return '';
+    if (['ok','diterima','terima','approved','approve','acc','accepted'].includes(raw)) return 'ok';
+    if (['tolak','ditolak','reject','rejected','perlu_perbaikan','perlu perbaikan'].includes(raw)) return 'tolak';
+    if (['revisi_dikirim','revisi dikirim','menunggu review','pending review','revisi'].includes(raw)) return 'revisi_dikirim';
+    return '';
+  };
+
+  const parsed = (() => {
+    try { return JSON.parse(d.statusDok || '{}'); } catch(e) { return {}; }
+  })();
+
+  return {
+    kak: normVal(parsed.kak ?? parsed.KAK ?? parsed.dokKAK),
+    kertas: normVal(parsed.kertas ?? parsed.Kertas ?? parsed.dokKertas),
+    referensi: normVal(parsed.referensi ?? parsed.Referensi ?? parsed.dokReferensi),
+  };
 }
 
 // Helper: icon & label per status dokumen
@@ -4845,6 +4882,7 @@ let _notifPanelOpen = false;
 let _notifInterval  = null;
 let _notifSyncSignature = '';
 let _notifSyncingData = false;
+let _notifView = 'aktif'; // aktif | riwayat
 
 const NOTIF_ICONS = {
   revisi_diminta   : '📋',
@@ -4938,7 +4976,7 @@ function toggleNotifPanel() {
   if (_notifPanelOpen) {
     panel.classList.add('open');
     if (backdrop) backdrop.style.display = 'block';
-    renderNotifList();
+    setNotifView(_notifView);
   } else {
     closeNotifPanel();
   }
@@ -4952,16 +4990,33 @@ function closeNotifPanel() {
   if (backdrop) backdrop.style.display = 'none';
 }
 
+function setNotifView(mode) {
+  _notifView = mode === 'riwayat' ? 'riwayat' : 'aktif';
+  const tabAktif = document.getElementById('notif-tab-aktif');
+  const tabRiwayat = document.getElementById('notif-tab-riwayat');
+  if (tabAktif) tabAktif.classList.toggle('active', _notifView === 'aktif');
+  if (tabRiwayat) tabRiwayat.classList.toggle('active', _notifView === 'riwayat');
+  const markAll = document.getElementById('notif-mark-all');
+  const clearBtn = document.getElementById('notif-clear-history');
+  if (markAll) markAll.style.display = _notifView === 'aktif' ? '' : 'none';
+  if (clearBtn) clearBtn.style.display = _notifView === 'riwayat' ? '' : 'none';
+  renderNotifList();
+}
+
 function renderNotifList() {
   const listEl = document.getElementById('notif-list');
   if (!listEl) return;
 
-  if (!_notifData.length) {
-    listEl.innerHTML = '<div class="notif-empty">🔕 Belum ada notifikasi</div>';
+  const source = _notifView === 'riwayat'
+    ? _notifData.filter(n => !!n.dibaca)
+    : _notifData.filter(n => !n.dibaca);
+
+  if (!source.length) {
+    listEl.innerHTML = '<div class="notif-empty">' + (_notifView === 'riwayat' ? '🗂️ Belum ada riwayat notifikasi' : '🔕 Tidak ada notifikasi aktif') + '</div>';
     return;
   }
 
-  listEl.innerHTML = _notifData.slice(0, 20).map(n => {
+  listEl.innerHTML = source.slice(0, 50).map(n => {
     const icon     = NOTIF_ICONS[n.tipe] || NOTIF_ICONS.default;
     const unread   = !n.dibaca;
     const timeAgo  = _fmtNotifTime(n.createdAt);
@@ -4973,6 +5028,7 @@ function renderNotifList() {
         <div class="notif-item-time">${timeAgo}${n.namaPaket ? ' · ' + esc(n.namaPaket.substring(0,30)) + (n.namaPaket.length > 30 ? '…' : '') : ''}</div>
       </div>
       ${unread ? '<div class="notif-unread-dot"></div>' : ''}
+      <button class="notif-item-delete" title="Hapus notifikasi" onclick="event.stopPropagation();deleteNotifikasi('${esc(n.id)}')">🗑️</button>
     </div>`;
   }).join('');
 }
@@ -5037,6 +5093,38 @@ async function onNotifClick(notifId, tipe, rowNum) {
     const target2 = allData.find(d => d.row === rowNum);
     if (target2) showDetail(target2);
   }
+}
+
+async function deleteNotifikasi(notifId, silent = false) {
+  if (!notifId || !GAS_URL) return;
+  try {
+    const delUrls = [
+      GAS_URL + '?action=deleteNotifikasi&notifId=' + encodeURIComponent(notifId),
+      GAS_URL + '?action=deleteNotification&notifId=' + encodeURIComponent(notifId),
+    ];
+    for (const u of delUrls) {
+      const rr = await xhrGet(u, { noCache: true });
+      if (rr && (rr.status === 'ok' || rr.success === true)) break;
+    }
+  } catch(e) {}
+
+  _notifData = _notifData.filter(n => n.id !== notifId);
+  _notifUnread = _notifData.filter(n => !n.dibaca).length;
+  updateNotifBadge();
+  renderNotifList();
+  if (!silent) showToast('🗑️ Notifikasi dihapus', 'success');
+}
+
+async function clearNotifHistory() {
+  const ids = _notifData.filter(n => !!n.dibaca).map(n => n.id).filter(Boolean);
+  if (!ids.length) {
+    showToast('ℹ️ Riwayat notifikasi sudah kosong', 'info');
+    return;
+  }
+  for (const id of ids) {
+    await deleteNotifikasi(id, true);
+  }
+  showToast('✅ Riwayat notifikasi berhasil dihapus', 'success');
 }
 
 async function markAllNotifRead() {
@@ -5948,8 +6036,11 @@ function renderOPDPengajuan() {
     const statusColor = STATUS_COLORS[d.progres||''] || '#94a3b8';
     const needsAction = ['Perlu Perbaikan','Revisi Dikirim'].includes(d.progres);
     const statusDokObj = parseStatusDok(d);
-    const adaTolak     = Object.values(statusDokObj).some(v => v === 'tolak');
-    const showRevisi   = needsAction && (adaTolak || Object.keys(statusDokObj).length === 0);
+    const statusDokVals = ['kak','kertas','referensi'].map(k => statusDokObj[k] || '');
+    const adaTolak     = statusDokVals.some(v => v === 'tolak');
+    const allBelumDicek = statusDokVals.every(v => !v);
+    const showRevisi   = needsAction && (adaTolak || allBelumDicek);
+    const showDokChecklistCard = ['Sedang Direviu','Perlu Perbaikan','Revisi Dikirim','Diterima','Ditolak'].includes(d.progres || '');
 
     const DOK_LABEL = {
       kak: 'KAK',
@@ -5981,7 +6072,7 @@ function renderOPDPengajuan() {
           ${needsAction ? `<span style="font-size:10px;background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:99px;font-weight:700">⚠️ Perlu Tindakan</span>` : ''}
         </div>
       </div>
-      <div class="opd-dok-status-wrap">${dokStatusHtml}</div>
+      ${showDokChecklistCard ? `<div class="opd-dok-status-wrap">${dokStatusHtml}</div>` : ''}
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-outline btn-sm" onclick='showDetail(${JSON.stringify(d).replace(/'/g,"&#39;")})'>👁️ Detail</button>
         ${showRevisi ? `<button class="btn btn-sm" style="background:#f59e0b;color:#fff;border:none"
