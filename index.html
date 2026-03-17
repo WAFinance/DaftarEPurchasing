@@ -1070,6 +1070,25 @@
     padding: 2px 8px; border-radius: 999px;
     border: 1px solid #f59e0b;
   }
+  .opd-dok-status-wrap {
+    display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0 2px;
+  }
+  .opd-dok-status-item {
+    font-size: 10px; font-weight: 700; border-radius: 999px;
+    padding: 4px 8px; border: 1px solid transparent;
+  }
+  .opd-dok-status-item.ok {
+    background: #ecfdf5; color: #166534; border-color: #86efac;
+  }
+  .opd-dok-status-item.tolak {
+    background: #fef2f2; color: #991b1b; border-color: #fca5a5;
+  }
+  .opd-dok-status-item.revisi_dikirim {
+    background: #fffbeb; color: #92400e; border-color: #fcd34d;
+  }
+  .opd-dok-status-item.netral {
+    background: #f8fafc; color: #64748b; border-color: #cbd5e1;
+  }
   .revisi-field-body { padding: 14px; }
 </style>
 </head>
@@ -4840,18 +4859,39 @@ async function loadNotifikasi() {
     const ppInstansiList = currentUser.instansiList && currentUser.instansiList.length
       ? currentUser.instansiList.join('|')
       : (currentUser.instansi || '');
-    const url = GAS_URL + '?action=getNotifikasi'
-      + '&username=' + encodeURIComponent(currentUser.username || '')
+    const qCommon = '&username=' + encodeURIComponent(currentUser.username || '')
       + '&role='     + encodeURIComponent(currentUser.role     || '')
       + '&instansi=' + encodeURIComponent(currentUser.instansi || '')
       + '&instansiList=' + encodeURIComponent(ppInstansiList)
-      + '&displayName=' + encodeURIComponent(currentUser.displayName || '');
+      + '&displayName=' + encodeURIComponent(currentUser.displayName || '')
+      + '&pejabat=' + encodeURIComponent(currentUser.displayName || '');
 
-    const res = await xhrGet(url, { noCache: true });
+    // Fallback endpoint karena implementasi GAS bisa beda nama action per role
+    const candidateUrls = [
+      GAS_URL + '?action=getNotifikasi' + qCommon,
+      GAS_URL + '?action=getNotification' + qCommon,
+      currentUser.role === 'pp' || currentUser.role === 'superadmin'
+        ? GAS_URL + '?action=getNotifikasiPP' + qCommon
+        : GAS_URL + '?action=getNotifikasiOPD' + qCommon,
+    ];
 
-    if (res && res.status === 'ok') {
-      _notifData   = res.data   || [];
-      _notifUnread = res.unread || 0;
+    let res = null;
+    for (const url of candidateUrls) {
+      res = await xhrGet(url, { noCache: true });
+      if (res && (res.status === 'ok' || Array.isArray(res.data) || Array.isArray(res.notifikasi))) break;
+    }
+
+    // Normalisasi response shape
+    const notifArr = (res && Array.isArray(res.data)) ? res.data
+      : (res && Array.isArray(res.notifikasi)) ? res.notifikasi
+      : [];
+    const unreadCount = (res && typeof res.unread === 'number')
+      ? res.unread
+      : notifArr.filter(n => !n.dibaca).length;
+
+    if (res && (res.status === 'ok' || notifArr.length)) {
+      _notifData   = notifArr;
+      _notifUnread = unreadCount;
       updateNotifBadge();
       if (_notifPanelOpen) renderNotifList();
 
@@ -4956,7 +4996,14 @@ async function onNotifClick(notifId, tipe, rowNum) {
   // Tandai dibaca
   if (notifId) {
     try {
-      await xhrGet(GAS_URL + '?action=readNotifikasi&notifId=' + encodeURIComponent(notifId), { noCache: true });
+      const markUrls = [
+        GAS_URL + '?action=readNotifikasi&notifId=' + encodeURIComponent(notifId),
+        GAS_URL + '?action=readNotification&notifId=' + encodeURIComponent(notifId),
+      ];
+      for (const u of markUrls) {
+        const rr = await xhrGet(u, { noCache: true });
+        if (rr && (rr.status === 'ok' || rr.success === true)) break;
+      }
       const n = _notifData.find(x => x.id === notifId);
       if (n) n.dibaca = true;
       _notifUnread = Math.max(0, _notifUnread - 1);
@@ -4996,7 +5043,14 @@ async function markAllNotifRead() {
   const unreadIds = _notifData.filter(n => !n.dibaca).map(n => n.id);
   for (const id of unreadIds) {
     try {
-      await xhrGet(GAS_URL + '?action=readNotifikasi&notifId=' + encodeURIComponent(id), { noCache: true });
+      const markUrls = [
+        GAS_URL + '?action=readNotifikasi&notifId=' + encodeURIComponent(id),
+        GAS_URL + '?action=readNotification&notifId=' + encodeURIComponent(id),
+      ];
+      for (const u of markUrls) {
+        const rr = await xhrGet(u, { noCache: true });
+        if (rr && (rr.status === 'ok' || rr.success === true)) break;
+      }
     } catch(e) {}
   }
   _notifData.forEach(n => n.dibaca = true);
@@ -5897,6 +5951,19 @@ function renderOPDPengajuan() {
     const adaTolak     = Object.values(statusDokObj).some(v => v === 'tolak');
     const showRevisi   = needsAction && (adaTolak || Object.keys(statusDokObj).length === 0);
 
+    const DOK_LABEL = {
+      kak: 'KAK',
+      kertas: 'Kertas Kerja',
+      referensi: 'Referensi'
+    };
+    const dokStatusHtml = ['kak','kertas','referensi'].map(k => {
+      const st = statusDokObj[k] || '';
+      const cls = st === 'ok' ? 'ok' : st === 'tolak' ? 'tolak' : st === 'revisi_dikirim' ? 'revisi_dikirim' : 'netral';
+      const icon = st === 'ok' ? '✅' : st === 'tolak' ? '❌' : st === 'revisi_dikirim' ? '📤' : '⏳';
+      const txt = st === 'ok' ? 'OK' : st === 'tolak' ? 'Perlu Revisi' : st === 'revisi_dikirim' ? 'Menunggu Cek' : 'Belum Dicek';
+      return `<span class="opd-dok-status-item ${cls}">${icon} ${DOK_LABEL[k]}: ${txt}</span>`;
+    }).join('');
+
     return `
     <div style="background:#fff;border-radius:12px;border:1px solid ${needsAction?'#fbbf24':'var(--border)'};
       box-shadow:${needsAction?'0 0 0 2px #fef3c7':' var(--shadow)'};
@@ -5914,6 +5981,7 @@ function renderOPDPengajuan() {
           ${needsAction ? `<span style="font-size:10px;background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:99px;font-weight:700">⚠️ Perlu Tindakan</span>` : ''}
         </div>
       </div>
+      <div class="opd-dok-status-wrap">${dokStatusHtml}</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-outline btn-sm" onclick='showDetail(${JSON.stringify(d).replace(/'/g,"&#39;")})'>👁️ Detail</button>
         ${showRevisi ? `<button class="btn btn-sm" style="background:#f59e0b;color:#fff;border:none"
