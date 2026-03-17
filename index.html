@@ -1162,7 +1162,7 @@
       <div class="topbar-sub" id="topbar-sub">Kota Surakarta · Data realtime dari Google Spreadsheet</div>
     </div>
     <div class="topbar-actions">
-      <button class="btn btn-outline btn-sm" onclick="loadData()">🔄 Refresh Data</button>
+      <button class="btn btn-outline btn-sm" onclick="loadData(true)">🔄 Refresh Data</button>
       <!-- NOTIFIKASI BELL — tampil saat login -->
       <div class="notif-bell-wrap" id="notif-bell-wrap" style="display:none" onclick="toggleNotifPanel()">
         <button class="btn btn-outline btn-sm" style="font-size:16px;padding:7px 11px" title="Notifikasi">🔔</button>
@@ -1354,7 +1354,7 @@
 
     <div id="data-source-banner" style="display:flex;background:var(--warning-bg);border:1px solid var(--accent);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--warning);align-items:center;justify-content:space-between;gap:12px">
       <span>⏳ Menghubungkan ke Google Spreadsheet...</span>
-      <button class="btn btn-outline btn-sm" onclick="loadData()" style="font-size:11px;flex-shrink:0">🔄 Refresh</button>
+      <button class="btn btn-outline btn-sm" onclick="loadData(true)" style="font-size:11px;flex-shrink:0">🔄 Refresh</button>
     </div>
     <div class="data-count" id="data-count"></div>
 
@@ -2620,14 +2620,14 @@ function normalizeGASRow(r) {
 // ============================================================
 // LOAD DATA — GAS > CSV Publik > Embedded
 // ============================================================
-async function loadData() {
+async function loadData(forceRefresh = false) {
   let source = 'none';
 
   // 1. Utama: Google Apps Script (baca+tulis)
   if (GAS_URL) {
     try {
       const gasDataUrl = GAS_URL.includes('?') ? GAS_URL + '&action=getData' : GAS_URL + '?action=getData';
-      const json = await xhrGet(gasDataUrl);
+      const json = await xhrGet(gasDataUrl, { noCache: forceRefresh });
       if (json && json.status === 'ok' && json.data && json.data.length > 0) {
         allData = json.data.map(normalizeGASRow);
         source = 'gas';
@@ -2664,18 +2664,18 @@ async function loadData() {
   // Init Calendar Heatmap
   setTimeout(() => initCalHeatmap(), 200);
   // Ambil user list PP & OPD dari GAS
-  loadUserList();
+  loadUserList(forceRefresh);
   // FIX #5: Refresh OPD Pengajuan page jika OPD sedang aktif
   if (currentUser && currentUser.role === 'opd') {
     setTimeout(() => renderOPDPengajuan(), 300);
   }
 }
 
-async function loadUserList() {
+async function loadUserList(forceRefresh = false) {
   if (!GAS_URL) return;
   try {
     const url = GAS_URL + (GAS_URL.includes('?') ? '&' : '?') + 'action=getUserList';
-    const json = await xhrGet(url);
+    const json = await xhrGet(url, { noCache: forceRefresh });
     if (json && json.status === 'ok') {
       userListPP      = json.pp           || [];
       userListOPD     = json.opd          || [];
@@ -2803,10 +2803,14 @@ function getInitials(name) {
 // POPULATE FILTERS
 // ============================================================
 // XHR helper — handle GAS redirect lebih baik dari fetch()
-function xhrGet(url) {
+function xhrGet(url, opts = {}) {
   return new Promise((resolve) => {
     const xhr = new XMLHttpRequest();
-    xhr.open('GET', url, true);
+    const noCache = !!opts.noCache;
+    const finalUrl = noCache
+      ? url + (url.includes('?') ? '&' : '?') + '_ts=' + Date.now() + '_' + Math.random().toString(36).slice(2,8)
+      : url;
+    xhr.open('GET', finalUrl, true);
     xhr.onload = function() {
       try { resolve(JSON.parse(xhr.responseText)); }
       catch(e) { resolve(null); }
