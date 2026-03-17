@@ -4921,6 +4921,39 @@ function markFallbackNotifSeen(rowNum) {
   localStorage.setItem(seenKey, JSON.stringify(next));
 }
 
+function getNotifDeletedKey() {
+  return 'epur_deleted_notif_' + (currentUser?.username || currentUser?.displayName || 'guest');
+}
+
+function getDeletedNotifSet() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(getNotifDeletedKey()) || '[]');
+    return new Set((Array.isArray(raw) ? raw : []).map(String).filter(Boolean));
+  } catch(e) { return new Set(); }
+}
+
+function saveDeletedNotifSet(setObj) {
+  const arr = Array.from(setObj || []).slice(0, 500);
+  localStorage.setItem(getNotifDeletedKey(), JSON.stringify(arr));
+}
+
+function rememberDeletedNotif(nid) {
+  if (!nid) return;
+  const setObj = getDeletedNotifSet();
+  setObj.add(String(nid));
+  saveDeletedNotifSet(setObj);
+}
+
+function buildNotifNid(n) {
+  if (n && n.id) return String(n.id);
+  const row = String(n?.row || '');
+  const tipe = String(n?.tipe || '');
+  const paket = String(n?.namaPaket || '');
+  const time = String(n?.createdAt || '');
+  const msg = String(n?.pesan || '').slice(0, 40);
+  return `local-${row}|${tipe}|${paket}|${time}|${msg}`;
+}
+
 async function loadNotifikasi() {
   if (!currentUser || !GAS_URL) return;
   try {
@@ -4974,6 +5007,12 @@ async function loadNotifikasi() {
       : (res && Array.isArray(res.items)) ? res.items
       : [];
 
+    notifArr = notifArr.map(n => {
+      const serverId = n && n.id ? String(n.id) : '';
+      const nid = buildNotifNid(n);
+      return { ...n, id: serverId, __nid: nid };
+    });
+
     // Fallback khusus PP/Superadmin: jika backend notif kosong, buat notifikasi dari data pengajuan terbaru
     if (!notifArr.length && (currentUser.role === 'pp' || currentUser.role === 'superadmin') && Array.isArray(allData) && allData.length) {
       const norm = v => String(v || '').toLowerCase().replace(/kota surakarta/gi,'').replace(/\s+/g,' ').trim();
@@ -5011,8 +5050,11 @@ async function loadNotifikasi() {
           dibaca: false,
         }));
 
-      if (fresh.length) notifArr = fresh;
+      if (fresh.length) notifArr = fresh.map(n => ({ ...n, id: String(n.id || ''), __nid: buildNotifNid(n) }));
     }
+
+    const deletedSet = getDeletedNotifSet();
+    notifArr = notifArr.filter(n => !deletedSet.has(String(n.__nid || n.id || '')));
 
     const unreadCount = (res && typeof res.unread === 'number')
       ? res.unread
@@ -5112,14 +5154,14 @@ function renderNotifList() {
     const unread   = !n.dibaca;
     const timeAgo  = _fmtNotifTime(n.createdAt);
     return `
-    <div class="notif-item${unread ? ' unread' : ''}" onclick="onNotifClick('${esc(n.id)}','${esc(n.tipe)}',${n.row})">
+    <div class="notif-item${unread ? ' unread' : ''}" onclick="onNotifClick('${esc(n.__nid || '')}','${esc(n.tipe)}',${n.row})">
       <div class="notif-item-icon ${esc(n.tipe)}">${icon}</div>
       <div class="notif-item-body">
         <div class="notif-item-pesan">${esc(n.pesan)}</div>
         <div class="notif-item-time">${timeAgo}${n.namaPaket ? ' · ' + esc(n.namaPaket.substring(0,30)) + (n.namaPaket.length > 30 ? '…' : '') : ''}</div>
       </div>
       ${unread ? '<div class="notif-unread-dot"></div>' : ''}
-      <button class="notif-item-delete" title="Hapus notifikasi" onclick="event.stopPropagation();deleteNotifikasi('${esc(n.id)}')">🗑️</button>
+      <button class="notif-item-delete" title="Hapus notifikasi" onclick="event.stopPropagation();deleteNotifikasi('${esc(n.__nid || '')}')">🗑️</button>
     </div>`;
   }).join('');
 }
@@ -5139,24 +5181,26 @@ function _fmtNotifTime(createdAt) {
   } catch(e) { return createdAt; }
 }
 
-async function onNotifClick(notifId, tipe, rowNum) {
+async function onNotifClick(notifNid, tipe, rowNum) {
   // Tandai dibaca
-  if (notifId) {
+  if (notifNid) {
     try {
-      const markUrls = [
-        GAS_URL + '?action=readNotifikasi&notifId=' + encodeURIComponent(notifId),
-        GAS_URL + '?action=readNotification&notifId=' + encodeURIComponent(notifId),
-      ];
-      for (const u of markUrls) {
-        const rr = await xhrGet(u, { noCache: true });
-        if (rr && (rr.status === 'ok' || rr.success === true)) break;
+      const n = _notifData.find(x => String(x.__nid || x.id || '') === String(notifNid));
+      if (n && n.id) {
+        const markUrls = [
+          GAS_URL + '?action=readNotifikasi&notifId=' + encodeURIComponent(n.id),
+          GAS_URL + '?action=readNotification&notifId=' + encodeURIComponent(n.id),
+        ];
+        for (const u of markUrls) {
+          const rr = await xhrGet(u, { noCache: true });
+          if (rr && (rr.status === 'ok' || rr.success === true)) break;
+        }
       }
-      const n = _notifData.find(x => x.id === notifId);
       if (n) n.dibaca = true;
       _notifUnread = Math.max(0, _notifUnread - 1);
       updateNotifBadge();
       renderNotifList();
-      if (String(notifId || '').startsWith('fallback-')) markFallbackNotifSeen(rowNum);
+      if (String(notifNid || '').startsWith('fallback-')) markFallbackNotifSeen(rowNum);
     } catch(e) {}
   }
 
@@ -5187,36 +5231,40 @@ async function onNotifClick(notifId, tipe, rowNum) {
   }
 }
 
-async function deleteNotifikasi(notifId, silent = false) {
-  if (!notifId || !GAS_URL) return;
-  try {
-    const delUrls = [
-      GAS_URL + '?action=deleteNotifikasi&notifId=' + encodeURIComponent(notifId),
-      GAS_URL + '?action=deleteNotification&notifId=' + encodeURIComponent(notifId),
-    ];
-    for (const u of delUrls) {
-      const rr = await xhrGet(u, { noCache: true });
-      if (rr && (rr.status === 'ok' || rr.success === true)) break;
-    }
-  } catch(e) {}
+async function deleteNotifikasi(notifNid, silent = false) {
+  if (!notifNid) return;
+  const deleted = _notifData.find(n => String(n.__nid || n.id || '') === String(notifNid));
 
-  const deleted = _notifData.find(n => n.id === notifId);
-  _notifData = _notifData.filter(n => n.id !== notifId);
+  if (GAS_URL && deleted && deleted.id) {
+    try {
+      const delUrls = [
+        GAS_URL + '?action=deleteNotifikasi&notifId=' + encodeURIComponent(deleted.id),
+        GAS_URL + '?action=deleteNotification&notifId=' + encodeURIComponent(deleted.id),
+      ];
+      for (const u of delUrls) {
+        const rr = await xhrGet(u, { noCache: true });
+        if (rr && (rr.status === 'ok' || rr.success === true)) break;
+      }
+    } catch(e) {}
+  }
+
+  rememberDeletedNotif(notifNid);
+  _notifData = _notifData.filter(n => String(n.__nid || n.id || '') !== String(notifNid));
   _notifUnread = _notifData.filter(n => !n.dibaca).length;
-  if (String(notifId || '').startsWith('fallback-')) markFallbackNotifSeen(deleted && deleted.row);
+  if (String(notifNid || '').startsWith('fallback-')) markFallbackNotifSeen(deleted && deleted.row);
   updateNotifBadge();
   renderNotifList();
   if (!silent) showToast('🗑️ Notifikasi dihapus', 'success');
 }
 
 async function clearNotifHistory() {
-  const ids = _notifData.filter(n => !!n.dibaca).map(n => n.id).filter(Boolean);
+  const ids = _notifData.filter(n => !!n.dibaca).map(n => n.__nid || n.id).filter(Boolean);
   if (!ids.length) {
     showToast('ℹ️ Riwayat notifikasi sudah kosong', 'info');
     return;
   }
-  for (const id of ids) {
-    await deleteNotifikasi(id, true);
+  for (const nid of ids) {
+    await deleteNotifikasi(nid, true);
   }
   showToast('✅ Riwayat notifikasi berhasil dihapus', 'success');
 }
