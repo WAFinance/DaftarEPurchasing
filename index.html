@@ -784,6 +784,10 @@
   }
 
   @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes refreshSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  .btn-refreshing { pointer-events: none; opacity: 0.7; }
+  .btn-refreshing .refresh-icon { display: inline-block; animation: refreshSpin 0.7s linear infinite; }
+  #refresh-timestamp { font-size: 11px; color: var(--text3); margin-left: 4px; }
 
   .empty { text-align: center; padding: 60px; color: var(--text3); }
   .empty-icon { font-size: 40px; margin-bottom: 12px; }
@@ -970,21 +974,6 @@
   .notif-panel-title { font-size: 14px; font-weight: 700; color: var(--text); }
   .notif-panel-mark-all { font-size: 11px; color: var(--primary); cursor: pointer; font-weight: 600; }
   .notif-panel-mark-all:hover { text-decoration: underline; }
-  .notif-panel-actions { display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:flex-end; }
-  .notif-tab {
-    font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px;
-    border: 1px solid var(--border); color: var(--text3); cursor: pointer; background: #fff;
-  }
-  .notif-tab.active { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
-  .notif-delete-btn {
-    font-size: 11px; font-weight: 600; color: #b91c1c; cursor: pointer;
-  }
-  .notif-delete-btn:hover { text-decoration: underline; }
-  .notif-item-delete {
-    border: none; background: transparent; color: #ef4444; cursor: pointer;
-    font-size: 14px; line-height: 1; padding: 4px 6px; border-radius: 6px;
-  }
-  .notif-item-delete:hover { background: #fee2e2; }
   .notif-list { flex: 1; overflow-y: auto; padding: 6px 0; }
   .notif-empty { text-align: center; padding: 32px; color: var(--text3); font-size: 13px; }
   .notif-item {
@@ -999,6 +988,7 @@
     width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center; font-size: 18px;
   }
+  .notif-item-icon.pengajuan_baru   { background: #dbeafe; }
   .notif-item-icon.revisi_diminta   { background: #fef3c7; }
   .notif-item-icon.revisi_dikirim   { background: #d1fae5; }
   .notif-item-icon.dokumen_diterima { background: #ecfdf5; }
@@ -1084,25 +1074,6 @@
     font-size: 10px; font-weight: 700;
     padding: 2px 8px; border-radius: 999px;
     border: 1px solid #f59e0b;
-  }
-  .opd-dok-status-wrap {
-    display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0 2px;
-  }
-  .opd-dok-status-item {
-    font-size: 10px; font-weight: 700; border-radius: 999px;
-    padding: 4px 8px; border: 1px solid transparent;
-  }
-  .opd-dok-status-item.ok {
-    background: #ecfdf5; color: #166534; border-color: #86efac;
-  }
-  .opd-dok-status-item.tolak {
-    background: #fef2f2; color: #991b1b; border-color: #fca5a5;
-  }
-  .opd-dok-status-item.revisi_dikirim {
-    background: #fffbeb; color: #92400e; border-color: #fcd34d;
-  }
-  .opd-dok-status-item.netral {
-    background: #f8fafc; color: #64748b; border-color: #cbd5e1;
   }
   .revisi-field-body { padding: 14px; }
 </style>
@@ -1196,7 +1167,8 @@
       <div class="topbar-sub" id="topbar-sub">Kota Surakarta · Data realtime dari Google Spreadsheet</div>
     </div>
     <div class="topbar-actions">
-      <button class="btn btn-outline btn-sm" onclick="loadData(true)">🔄 Refresh Data</button>
+      <button class="btn btn-outline btn-sm" id="btn-refresh-data" onclick="triggerRefreshData()"><span class="refresh-icon">🔄</span> Refresh Data</button>
+      <span id="refresh-timestamp"></span>
       <!-- NOTIFIKASI BELL — tampil saat login -->
       <div class="notif-bell-wrap" id="notif-bell-wrap" style="display:none" onclick="toggleNotifPanel()">
         <button class="btn btn-outline btn-sm" style="font-size:16px;padding:7px 11px" title="Notifikasi">🔔</button>
@@ -1383,7 +1355,7 @@
 
     <div id="data-source-banner" style="display:flex;background:var(--warning-bg);border:1px solid var(--accent);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--warning);align-items:center;justify-content:space-between;gap:12px">
       <span>⏳ Menghubungkan ke Google Spreadsheet...</span>
-      <button class="btn btn-outline btn-sm" onclick="loadData(true)" style="font-size:11px;flex-shrink:0">🔄 Refresh</button>
+      <button class="btn btn-outline btn-sm" id="btn-refresh-data2" onclick="triggerRefreshData()" style="font-size:11px;flex-shrink:0">🔄 Refresh</button>
     </div>
     <div class="data-count" id="data-count"></div>
 
@@ -2036,6 +2008,53 @@
   </div>
 </div>
 
+<!-- MODAL: Inject Google Calendar -->
+<div id="inject-cal-modal" style="display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--surface);border-radius:16px;width:100%;max-width:520px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 20px 40px rgba(0,0,0,0.3)">
+    <div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:16px;font-weight:700;color:var(--text)">📆 Sync ke Google Calendar</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:3px" id="inject-cal-count">0 item jadwal</div>
+      </div>
+      <button onclick="closeInjectCalModal()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text3);line-height:1">×</button>
+    </div>
+
+    <div style="padding:16px 24px;overflow-y:auto;flex:1">
+      <!-- Penjelasan fitur -->
+      <div style="background:var(--info-bg);border:1px solid var(--info);border-radius:10px;padding:14px;margin-bottom:16px;font-size:12px;line-height:1.7;color:var(--info)">
+        <div style="font-weight:700;margin-bottom:6px">ℹ️ Cara kerja fitur ini:</div>
+        <div>• Event jadwal pengadaan akan ditambahkan ke <strong>Google Calendar</strong> akun yang men-deploy Apps Script</div>
+        <div>• Undangan kalender akan dikirim ke <strong>email Pejabat Pengadaan</strong> sesuai data di sheet Mapping</div>
+        <div>• Pejabat akan menerima notifikasi email dan event masuk ke kalender mereka</div>
+        <div>• Format event: <em>[Metode] Nama Paket - Tahap</em></div>
+      </div>
+
+      <!-- Preview daftar email pejabat -->
+      <div style="margin-bottom:14px">
+        <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px">📧 Email yang akan diundang:</div>
+        <div id="inject-cal-email-preview" style="background:var(--bg);border-radius:8px;padding:12px;font-size:12px;color:var(--text2);max-height:150px;overflow-y:auto">
+          <div style="color:var(--text3)">⏳ Memuat daftar email...</div>
+        </div>
+      </div>
+
+      <!-- Preview daftar event -->
+      <div>
+        <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px">📋 Event yang akan dibuat (<span id="inject-cal-event-count">0</span>):</div>
+        <div id="inject-cal-event-preview" style="background:var(--bg);border-radius:8px;padding:12px;font-size:12px;color:var(--text2);max-height:180px;overflow-y:auto">
+          <div style="color:var(--text3)">⏳ Memuat...</div>
+        </div>
+      </div>
+
+      <div id="inject-cal-error" style="display:none;color:var(--danger);font-size:12px;margin-top:12px;padding:10px;background:var(--danger-bg);border-radius:8px"></div>
+    </div>
+
+    <div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end">
+      <button onclick="closeInjectCalModal()" class="btn btn-outline">Batal</button>
+      <button id="btn-do-inject" onclick="doInjectCalendar()" class="btn btn-primary">📆 Inject Sekarang</button>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
@@ -2043,11 +2062,10 @@
 <div class="notif-panel" id="notif-panel">
   <div class="notif-panel-header">
     <div class="notif-panel-title">🔔 Notifikasi</div>
-    <div class="notif-panel-actions">
-      <span class="notif-tab active" id="notif-tab-aktif" onclick="setNotifView('aktif')">Aktif</span>
-      <span class="notif-tab" id="notif-tab-riwayat" onclick="setNotifView('riwayat')">Riwayat</span>
-      <span class="notif-panel-mark-all" id="notif-mark-all" onclick="markAllNotifRead()">Tandai semua dibaca</span>
-      <span class="notif-delete-btn" id="notif-clear-history" style="display:none" onclick="clearNotifHistory()">Hapus riwayat</span>
+    <div style="display:flex;gap:8px;align-items:center">
+      <span class="notif-panel-mark-all" onclick="markAllNotifRead()">Tandai dibaca</span>
+      <span style="color:var(--text3);font-size:11px">|</span>
+      <span class="notif-panel-mark-all" onclick="deleteAllNotif()" style="color:var(--danger)">🗑️ Hapus semua</span>
     </div>
   </div>
   <div class="notif-list" id="notif-list">
@@ -2601,23 +2619,26 @@ const CAL_CLASS = {
 // NORMALIZE GAS ROW — petakan kolom spreadsheet ke field JS
 // ============================================================
 function normalizeGASRow(r) {
-  // Cari field dengan: exact → case-insensitive → partial match
+  // Cari field dengan: exact → case-insensitive → partial match (hindari kolom Revisi)
   function get(r, ...keys) {
     const rKeys = Object.keys(r);
     for (const k of keys) {
-      // exact
+      // exact match
       if (r[k] !== undefined && r[k] !== null && r[k] !== '') return String(r[k]);
     }
     for (const k of keys) {
-      // case-insensitive tanpa spasi
+      // case-insensitive tanpa spasi — exact
       const kn = k.toLowerCase().replace(/\s+/g,'');
       const f = rKeys.find(rk => rk.toLowerCase().replace(/\s+/g,'') === kn);
       if (f && r[f] !== undefined && r[f] !== null && r[f] !== '') return String(r[f]);
     }
     for (const k of keys) {
-      // partial contains
+      // partial contains — KECUALI kolom yang mengandung 'revisi' (agar dok utama tidak ambil kolom revisi)
       const kn = k.toLowerCase();
-      const f = rKeys.find(rk => rk.toLowerCase().includes(kn));
+      const f = rKeys.find(rk => {
+        const rkl = rk.toLowerCase();
+        return rkl.includes(kn) && !rkl.includes('revisi');
+      });
       if (f && r[f] !== undefined && r[f] !== null && r[f] !== '') return String(r[f]);
     }
     return '';
@@ -2639,7 +2660,7 @@ function normalizeGASRow(r) {
     waPhone    : get(r, 'WA Phone', 'No WA', 'WA', 'Nomor Whatsapp'),
     dokKAK        : get(r, 'Link KAK', 'KAK', 'Kerangka Acuan Kerja', 'Dokumen KAK'),
     dokKertas     : get(r, 'Link Kertas Kerja', 'Kertas Kerja', 'Dokumen Kertas Kerja'),
-    dokReferensi  : get(r, 'Link Referensi', 'Referensi', 'Referensi Harga', 'Dokumen Referensi'),
+    dokReferensi  : get(r, 'Link Referensi', 'Link Referensi Harga', 'Referensi Harga', 'Dokumen Referensi'),
     riwayatCatatan: get(r, 'Riwayat Catatan', 'Catatan'),
     // NEW: status dokumen checklist dan revisi
     statusDok     : get(r, 'Status Dokumen'),
@@ -2648,7 +2669,6 @@ function normalizeGASRow(r) {
     revRef1       : get(r, 'Link Referensi Revisi 1'),
     revKAK2       : get(r, 'Link KAK Revisi 2', 'KAK Revisi 2'),
     revKertas2    : get(r, 'Link Kertas Kerja Revisi 2', 'Kertas Kerja Revisi 2'),
-    revRef2       : get(r, 'Link Referensi Revisi 2'),
   };
 }
 
@@ -2704,8 +2724,71 @@ async function loadData(forceRefresh = false) {
   if (currentUser && currentUser.role === 'opd') {
     setTimeout(() => renderOPDPengajuan(), 300);
   }
-  // Sinkronkan notifikasi setelah data dimuat / refresh
-  if (currentUser) setTimeout(() => loadNotifikasi(), 200);
+
+  // Update timestamp terakhir refresh
+  _updateRefreshTimestamp();
+}
+
+// ── Timestamp terakhir refresh ──────────────────────────────
+let _lastRefreshTime = null;
+function _updateRefreshTimestamp() {
+  _lastRefreshTime = new Date();
+  const el = document.getElementById('refresh-timestamp');
+  if (!el) return;
+  const hh = String(_lastRefreshTime.getHours()).padStart(2,'0');
+  const mm = String(_lastRefreshTime.getMinutes()).padStart(2,'0');
+  const ss = String(_lastRefreshTime.getSeconds()).padStart(2,'0');
+  el.textContent = `Diperbarui ${hh}:${mm}:${ss}`;
+}
+
+// ── triggerRefreshData: visual feedback saat refresh ────────
+async function triggerRefreshData() {
+  const btn1 = document.getElementById('btn-refresh-data');
+  const btn2 = document.getElementById('btn-refresh-data2');
+  const tsEl = document.getElementById('refresh-timestamp');
+
+  // Set loading state
+  if (btn1) {
+    btn1.disabled = true;
+    btn1.classList.add('btn-refreshing');
+    btn1.innerHTML = '<span class="refresh-icon">🔄</span> Memuat...';
+  }
+  if (btn2) {
+    btn2.disabled = true;
+    btn2.classList.add('btn-refreshing');
+    btn2.innerHTML = '<span class="refresh-icon">🔄</span>';
+  }
+  if (tsEl) tsEl.textContent = 'Mengambil data...';
+
+  // Overlay ringan pada tabel agar terasa ada sesuatu terjadi
+  const tableWrap = document.querySelector('#page-data .table-wrap, .table-wrap');
+  if (tableWrap) {
+    tableWrap.style.opacity = '0.5';
+    tableWrap.style.transition = 'opacity 0.2s';
+  }
+
+  try {
+    await loadData(true);
+    showToast('✅ Data berhasil diperbarui — ' + allData.length + ' pengajuan', 'success', 3000);
+  } catch(e) {
+    showToast('❌ Gagal memuat data: ' + (e.message || 'Error'), 'error');
+  } finally {
+    // Restore button
+    if (btn1) {
+      btn1.disabled = false;
+      btn1.classList.remove('btn-refreshing');
+      btn1.innerHTML = '<span class="refresh-icon">🔄</span> Refresh Data';
+    }
+    if (btn2) {
+      btn2.disabled = false;
+      btn2.classList.remove('btn-refreshing');
+      btn2.innerHTML = '🔄 Refresh';
+    }
+    // Restore tabel opacity
+    if (tableWrap) {
+      tableWrap.style.opacity = '1';
+    }
+  }
 }
 
 async function loadUserList(forceRefresh = false) {
@@ -3258,26 +3341,9 @@ function renderDocCard(url, label) {
 // ============================================================
 let _currentDetailData = null;
 
-// Helper: parse statusDok JSON safely + normalisasi nilai status
+// Helper: parse statusDok JSON safely
 function parseStatusDok(d) {
-  const normVal = v => {
-    const raw = String(v || '').toLowerCase().trim();
-    if (!raw) return '';
-    if (['ok','diterima','terima','approved','approve','acc','accepted'].includes(raw)) return 'ok';
-    if (['tolak','ditolak','reject','rejected','perlu_perbaikan','perlu perbaikan'].includes(raw)) return 'tolak';
-    if (['revisi_dikirim','revisi dikirim','menunggu review','pending review','revisi'].includes(raw)) return 'revisi_dikirim';
-    return '';
-  };
-
-  const parsed = (() => {
-    try { return JSON.parse(d.statusDok || '{}'); } catch(e) { return {}; }
-  })();
-
-  return {
-    kak: normVal(parsed.kak ?? parsed.KAK ?? parsed.dokKAK),
-    kertas: normVal(parsed.kertas ?? parsed.Kertas ?? parsed.dokKertas),
-    referensi: normVal(parsed.referensi ?? parsed.Referensi ?? parsed.dokReferensi),
-  };
+  try { return JSON.parse(d.statusDok || '{}'); } catch(e) { return {}; }
 }
 
 // Helper: icon & label per status dokumen
@@ -3304,48 +3370,51 @@ function showDetail(d) {
 
   const statusDokObj = parseStatusDok(d);
   const dokList = [
-    { key: 'kak',       label: 'KAK / Kerangka Acuan Kerja', url: d.dokKAK,       revUrls: [d.revKAK1, d.revKAK2].filter(Boolean) },
-    { key: 'kertas',    label: 'Kertas Kerja',               url: d.dokKertas,    revUrls: [d.revKertas1, d.revKertas2].filter(Boolean) },
-    { key: 'referensi', label: 'Referensi Harga',            url: d.dokReferensi, revUrls: [d.revRef1, d.revRef2].filter(Boolean) },
-  ].filter(dok => dok.url || dok.revUrls.length);
+    { key: 'kak',       label: 'KAK / Kerangka Acuan Kerja', url: d.dokKAK,       revUrl: d.revKAK1 || d.revKAK2 },
+    { key: 'kertas',    label: 'Kertas Kerja',               url: d.dokKertas,    revUrl: d.revKertas1 || d.revKertas2 },
+    { key: 'referensi', label: 'Referensi Harga',            url: d.dokReferensi, revUrl: d.revRef1 },
+  ].filter(dok => dok.url);
 
-  // FIX #4: Dokumen section — pure VIEW ONLY (tidak ada checklist di sini)
+  // Tampilkan status dokumen (untuk PP dan OPD sendiri)
+  const adaReviewDok = Object.values(statusDokObj).some(v => v && v !== '');
   let dokHtml = '';
   if (dokList.length > 0) {
     if (canViewDokumen) {
-      // PP / OPD sendiri: tampilkan status dokumen + link
       dokHtml = `
       <hr class="divider">
       <div class="doc-section-title">📁 Dokumen Pengajuan</div>
+      ${adaReviewDok ? '' : `<div style="font-size:11px;color:var(--text3);margin-bottom:8px;padding:6px 10px;background:var(--bg);border-radius:6px">⏳ Menunggu review dokumen dari Pejabat Pengadaan</div>`}
       <div class="dok-checklist-wrap">
         ${dokList.map(dok => {
           const st   = statusDokObj[dok.key] || '';
           const info = getDokStatusInfo(st);
           const cls  = st === 'ok' ? 'status-ok' : st === 'tolak' ? 'status-tolak' : st === 'revisi_dikirim' ? 'status-revisi_dikirim' : '';
-          const logLinks = [
-            dok.url ? `<a href="${esc(dok.url)}" target="_blank" class="dok-checklist-link">📄 Dokumen Awal</a>` : '',
-            ...dok.revUrls.map((u, i) => `<a href="${esc(u)}" target="_blank" class="dok-checklist-link">📤 Revisi ${i+1}</a>`)
-          ].filter(Boolean).join(' ');
+          const revBadge = dok.revUrl
+            ? `<a href="${esc(dok.revUrl)}" target="_blank" class="dok-checklist-link" style="font-size:12px;padding:4px 8px;background:var(--warning-bg);border-radius:6px;color:var(--warning)">📤 Lihat Revisi</a>` : '';
+          const statusLabel = st === 'ok'
+            ? `<span style="font-size:11px;color:var(--success);font-weight:600">✅ Diterima PP</span>`
+            : st === 'tolak'
+            ? `<span style="font-size:11px;color:var(--danger);font-weight:600">❌ Ditolak PP — perlu revisi</span>`
+            : st === 'revisi_dikirim'
+            ? `<span style="font-size:11px;color:#f59e0b;font-weight:600">📤 Revisi dikirim — menunggu review</span>`
+            : `<span style="font-size:11px;color:var(--text3)">⏳ Belum diperiksa</span>`;
           return `
           <div class="dok-checklist-item ${cls}" style="cursor:default">
-            <div class="dok-checklist-icon">${info.icon}</div>
+            <div class="dok-checklist-icon" style="font-size:22px">${info.icon}</div>
             <div style="flex:1;min-width:0">
               <div class="dok-checklist-label">${esc(dok.label)}</div>
-              <div style="display:flex;gap:8px;align-items:center;margin-top:3px;font-size:13px;color:var(--text2)">
-                <span>Log Dokumen:</span>
-                ${logLinks}
-              </div>
+              <div style="margin-top:3px">${statusLabel}</div>
             </div>
             <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
-              ${dok.url ? `<a href="${esc(dok.url)}" target="_blank" class="dok-checklist-link" style="font-size:13px;padding:5px 8px;background:var(--primary-bg);border-radius:6px">👁️ View</a>` : ''}
-              ${dok.url ? `<a href="${esc(dok.url)}" target="_blank" rel="noopener" class="dok-checklist-link" style="font-size:13px;padding:5px 8px;background:var(--success-bg);border-radius:6px">⬇️ Download</a>` : ''}
+              <a href="${esc(dok.url)}" target="_blank" class="dok-checklist-link" style="font-size:13px;padding:5px 8px;background:var(--primary-bg);border-radius:6px">👁️ View</a>
+              <a href="${esc(dok.url)}" target="_blank" rel="noopener" class="dok-checklist-link" style="font-size:13px;padding:5px 8px;background:var(--success-bg);border-radius:6px">⬇️ Download</a>
+              ${revBadge}
             </div>
-            ${st ? `<span class="dok-status-badge ${st}">${info.label}</span>` : ''}
           </div>`;
         }).join('')}
       </div>`;
     } else {
-      // FIX #1 #7: Public / OPD instansi lain — lock dokumen
+      // Public / OPD instansi lain — lock dokumen
       dokHtml = `
       <hr class="divider">
       <div class="doc-section-title">📁 Dokumen Pengajuan</div>
@@ -3416,11 +3485,10 @@ function showDetail(d) {
 let _dokChecklistState = {};
 
 function setDokStatus(key, newStatus) {
-  const activeData = _currentDetailData || currentEditData;
-  if (!activeData) return;
+  if (!_currentDetailData) return;
   // Inisialisasi dari data existing jika belum
-  if (Object.keys(_dokChecklistState).length === 0 || _dokChecklistState._rowRef !== activeData.row) {
-    _dokChecklistState = { ...(parseStatusDok(activeData)), _rowRef: activeData.row };
+  if (Object.keys(_dokChecklistState).length === 0 || _dokChecklistState._rowRef !== _currentDetailData.row) {
+    _dokChecklistState = { ...(parseStatusDok(_currentDetailData)), _rowRef: _currentDetailData.row };
   }
 
   // Toggle: klik status yang sama → reset ke kosong
@@ -3695,9 +3763,9 @@ function _openEditModalInternal(d) {
   // Build dokumen checklist section (hanya jika ada dokumen)
   const statusDokObj = parseStatusDok(d);
   const dokListEdit = [
-    { key: 'kak',       label: 'KAK / Kerangka Acuan Kerja', url: d.dokKAK,       revUrl: d.revKAK1 || d.revKAK2 },
-    { key: 'kertas',    label: 'Kertas Kerja',               url: d.dokKertas,    revUrl: d.revKertas1 || d.revKertas2 },
-    { key: 'referensi', label: 'Referensi Harga',            url: d.dokReferensi, revUrl: d.revRef1 },
+    { key: 'kak',       label: 'KAK / Kerangka Acuan Kerja', url: d.dokKAK,       revUrl1: d.revKAK1,    revUrl2: d.revKAK2 },
+    { key: 'kertas',    label: 'Kertas Kerja',               url: d.dokKertas,    revUrl1: d.revKertas1, revUrl2: d.revKertas2 },
+    { key: 'referensi', label: 'Referensi Harga',            url: d.dokReferensi, revUrl1: d.revRef1,    revUrl2: null },
   ].filter(dok => dok.url);
 
   // Reset checklist state untuk data baru
@@ -3713,17 +3781,36 @@ function _openEditModalInternal(d) {
       ${dokListEdit.map(dok => {
         const st  = statusDokObj[dok.key] || '';
         const cls = st === 'ok' ? 'status-ok' : st === 'tolak' ? 'status-tolak' : st === 'revisi_dikirim' ? 'status-revisi_dikirim' : '';
-        const revBadge = dok.revUrl
-          ? `<a href="${esc(dok.revUrl)}" target="_blank" class="dok-checklist-link">📤 Revisi</a>` : '';
+        // Tentukan dokumen terbaru (revisi terbaru > revisi 1 > asli)
+        const latestUrl = dok.revUrl2 || dok.revUrl1 || dok.url;
+        const hasRevisi = !!(dok.revUrl1 || dok.revUrl2);
+        const revCount  = (dok.revUrl2 ? 2 : dok.revUrl1 ? 1 : 0);
+        // Badge revisi
+        const revisiBadge = hasRevisi
+          ? `<span style="background:#f59e0b22;color:#b45309;font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;border:1px solid #f59e0b55;margin-left:6px">📤 Revisi ${revCount}</span>`
+          : '';
+        // Link history dokumen
+        const historyLinks = hasRevisi ? `
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:4px">
+            <span style="font-size:10px;color:var(--text3);font-weight:600">Riwayat:</span>
+            <a href="${esc(dok.url)}" target="_blank" style="font-size:11px;color:var(--text3);text-decoration:none;padding:2px 7px;background:var(--bg);border-radius:4px;border:1px solid var(--border)">📄 Asli</a>
+            ${dok.revUrl1 ? `<a href="${esc(dok.revUrl1)}" target="_blank" style="font-size:11px;color:#b45309;text-decoration:none;padding:2px 7px;background:#fef3c7;border-radius:4px;border:1px solid #fcd34d">📤 Revisi 1</a>` : ''}
+            ${dok.revUrl2 ? `<a href="${esc(dok.revUrl2)}" target="_blank" style="font-size:11px;color:#b45309;text-decoration:none;padding:2px 7px;background:#fef3c7;border-radius:4px;border:1px solid #fcd34d">📤 Revisi 2</a>` : ''}
+          </div>` : '';
         return `
         <div class="dok-checklist-item ${cls}" id="dci-${dok.key}">
           <div class="dok-checklist-icon">${st === 'ok' ? '✅' : st === 'tolak' ? '❌' : st === 'revisi_dikirim' ? '📤' : '📄'}</div>
           <div style="flex:1;min-width:0">
-            <div class="dok-checklist-label">${esc(dok.label)}</div>
-            <div style="display:flex;gap:8px;align-items:center;margin-top:3px">
-              <a href="${esc(dok.url)}" target="_blank" class="dok-checklist-link">👁️ Lihat</a>
-              ${revBadge}
+            <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">
+              <span class="dok-checklist-label">${esc(dok.label)}</span>
+              ${revisiBadge}
             </div>
+            <div style="display:flex;gap:8px;align-items:center;margin-top:3px">
+              <a href="${esc(latestUrl)}" target="_blank" class="dok-checklist-link" style="font-weight:600">
+                👁️ ${hasRevisi ? 'Lihat Revisi Terbaru' : 'Lihat'}
+              </a>
+            </div>
+            ${historyLinks}
           </div>
           <div class="dok-checklist-actions">
             <button class="dok-btn-ok${st==='ok'?' active':''}"
@@ -3734,9 +3821,12 @@ function _openEditModalInternal(d) {
         </div>`;
       }).join('')}
     </div>
-    <div style="font-size:11px;color:var(--text3);margin-top:8px">
-      Status dokumen akan ikut tersimpan saat klik <strong>Simpan Perubahan</strong>.
+    <div style="margin-top:8px;margin-bottom:4px">
+      <input type="text" id="dok-catatan-pp" class="form-control" placeholder="Catatan review dokumen (opsional)" style="font-size:12px">
     </div>
+    <button class="btn btn-sm" style="background:var(--info);color:#fff;width:100%;margin-bottom:4px;display:none" onclick="saveDokChecklistFromEdit()">
+      💾 Simpan Review Dokumen
+    </button>
     <hr class="divider">` : '';
 
   document.getElementById('modal-body').innerHTML = `
@@ -3801,6 +3891,14 @@ function _openEditModalInternal(d) {
   if (d.progres === 'Selesai Pengadaan') checkSelesaiStatus(true);
   openModal();
 }
+
+// Wrapper saveDokChecklist yang bisa dipanggil dari dalam edit modal
+async function saveDokChecklistFromEdit() {
+  await saveDokChecklist();
+  // Jika berhasil, tutup modal dan reload
+  setTimeout(() => loadData(), 1500);
+}
+
 
 function selectStatus(status, key) {
   document.getElementById('selected-status').value = status;
@@ -3932,30 +4030,8 @@ function previewDocLink(inputId, previewId) {
 }
 
 async function saveEdit() {
-  const selectedStatus = (document.getElementById('selected-status')?.value || '').trim();
+  const status  = (document.getElementById('selected-status')?.value || '').trim();
   const catatan = (document.getElementById('edit-catatan')?.value || '').trim();
-
-  // Gabungkan status dokumen existing + perubahan checklist di modal edit
-  const existingDok = parseStatusDok(currentEditData || {});
-  const mergedDok   = { ...existingDok };
-  ['kak','kertas','referensi'].forEach(k => {
-    if (_dokChecklistState[k] !== undefined) mergedDok[k] = _dokChecklistState[k];
-  });
-  delete mergedDok._rowRef;
-
-  const dokVals = ['kak','kertas','referensi'].map(k => mergedDok[k] || '');
-  const hasDokReview = dokVals.some(v => !!v);
-
-  // Jika belum pilih status tapi sudah review dokumen, turunkan status otomatis
-  let status = selectedStatus;
-  if (!status && hasDokReview) {
-    if (dokVals.some(v => v === 'tolak')) {
-      status = 'Perlu Perbaikan';
-    } else if (dokVals.every(v => v === 'ok')) {
-      status = 'Diterima';
-    }
-  }
-
   if (!status) { showToast('⚠️ Pilih status progres terlebih dahulu','error'); return; }
 
   // Catatan wajib kecuali status Diterima
@@ -3965,18 +4041,53 @@ async function saveEdit() {
     return;
   }
 
-  const prevStatus = currentEditData.progres || '';
-  const prevCatatan = currentEditData.catatan || '';
+  const prevStatus  = currentEditData.progres  || '';
+  const prevCatatan = currentEditData.catatan   || '';
+
+  // ── Cek apakah ada checklist dokumen yang diubah ──
+  const hasChecklist = Object.keys(_dokChecklistState).filter(k => k !== '_rowRef').length > 0;
+  let checklistSaved = false;
+
+  if (hasChecklist) {
+    // Gabungkan checklist ke dalam request update progres sekaligus
+    // simpan dulu dokumen checklist, baru simpan progres
+    const existing   = parseStatusDok(currentEditData);
+    const merged     = { ...existing };
+    ['kak','kertas','referensi'].forEach(k => {
+      if (_dokChecklistState[k] !== undefined) merged[k] = _dokChecklistState[k];
+    });
+    delete merged._rowRef;
+
+    const catatanDok  = (document.getElementById('dok-catatan-pp')?.value || '').trim();
+    const statusDokStr = JSON.stringify(merged);
+
+    try {
+      const payload = {
+        action    : 'updateDokChecklist',
+        row       : currentEditData.row,
+        instansi  : currentEditData.instansi,
+        namaPaket : currentEditData.namaPaket,
+        noRUP     : currentEditData.noRUP,
+        pejabat   : currentEditData.pejabat,
+        statusDok : statusDokStr,
+        catatanDok: catatanDok,
+        username  : currentUser.displayName || currentUser.username,
+      };
+      const res = await xhrPost(GAS_URL, payload);
+      if (res && res.status === 'ok') {
+        const idx = allData.findIndex(x => x.row === currentEditData.row);
+        if (idx !== -1) allData[idx].statusDok = statusDokStr;
+        checklistSaved = true;
+      }
+    } catch(e) { console.warn('checklist save in saveEdit error:', e); }
+  }
 
   // Optimistic update — langsung update tampilan
   const idx = allData.findIndex(d => d.row === currentEditData.row);
-  if (idx !== -1) {
-    allData[idx].progres = status;
-    allData[idx].catatan = catatan;
-    allData[idx].statusDok = JSON.stringify(mergedDok);
-  }
+  if (idx !== -1) { allData[idx].progres = status; allData[idx].catatan = catatan; }
 
   closeModal();
+  _dokChecklistState = {};
   applyFilters();
   renderDashboard();
   showToast('⏳ Menyimpan ke Google Spreadsheet...', 'info');
@@ -3984,21 +4095,17 @@ async function saveEdit() {
   const payload = encodeURIComponent(JSON.stringify({
     row: currentEditData.row,
     progres: status,
-    catatan: catatan.trim(),           // catatan tambahan baru
-    appendCatatan: true,               // flag: tambahkan ke riwayat
+    catatan: catatan.trim(),
+    appendCatatan: true,
     namaPaket: currentEditData.namaPaket || '',
     instansi: currentEditData.instansi || '',
     pejabat: currentEditData.pejabat || '',
     noRUP: currentEditData.noRUP || '',
     prevStatus: prevStatus,
-    prevCatatan: prevCatatan,
-    statusDok: JSON.stringify(mergedDok),
-    catatanDok: (document.getElementById('dok-catatan-pp')?.value || '').trim(),
-    username: currentUser?.displayName || currentUser?.username || '',
+    prevCatatan: prevCatatan
   }));
   const url = GAS_URL + '?action=update&data=' + payload;
 
-  // Gunakan XMLHttpRequest agar bisa follow redirect GAS dengan benar
   await new Promise((resolve) => {
     const xhr = new XMLHttpRequest();
     xhr.open('GET', url, true);
@@ -4006,12 +4113,12 @@ async function saveEdit() {
       try {
         const json = JSON.parse(xhr.responseText);
         if (json.status === 'ok') {
-          showToast('✅ Berhasil disimpan! Progres: ' + status, 'success');
+          const extra = checklistSaved ? ' + checklist dokumen tersimpan.' : '';
+          showToast('✅ Berhasil disimpan! Progres: ' + status + extra, 'success');
         } else {
           showToast('⚠️ Tersimpan lokal. Gagal ke spreadsheet: ' + (json.message||''), 'error');
         }
       } catch(e) {
-        // Jika response bukan JSON tapi status 200, kemungkinan berhasil
         if (xhr.status === 200) {
           showToast('✅ Progres disimpan: ' + status, 'success');
         } else {
@@ -4021,15 +4128,12 @@ async function saveEdit() {
       resolve();
     };
     xhr.onerror = function() {
-      // GAS sering throw network error karena redirect ke script.googleusercontent.com
-      // Tapi data sebenarnya sudah terkirim — anggap berhasil
       showToast('✅ Progres disimpan: ' + status + ' (verifikasi via spreadsheet)', 'success');
       resolve();
     };
     xhr.send();
   });
 }
-
 
 // ============================================================
 // SETUP APPS SCRIPT URL
@@ -4900,187 +5004,30 @@ let _notifData   = [];   // semua notifikasi
 let _notifUnread = 0;    // jumlah belum dibaca
 let _notifPanelOpen = false;
 let _notifInterval  = null;
-let _notifSyncSignature = '';
-let _notifSyncingData = false;
-let _notifView = 'aktif'; // aktif | riwayat
 
 const NOTIF_ICONS = {
+  pengajuan_baru   : '📬',
   revisi_diminta   : '📋',
   revisi_dikirim   : '📤',
   dokumen_diterima : '✅',
-  pengajuan_baru   : '🆕',
   default          : '🔔',
 };
-
-function markFallbackNotifSeen(rowNum) {
-  if (!rowNum || !(currentUser && (currentUser.role === 'pp' || currentUser.role === 'superadmin'))) return;
-  const seenKey = 'epur_seen_pp_notif_' + (currentUser.username || currentUser.displayName || 'pp');
-  let seenRows = [];
-  try { seenRows = JSON.parse(localStorage.getItem(seenKey) || '[]'); } catch(e) { seenRows = []; }
-  const next = Array.from(new Set([Number(rowNum), ...(Array.isArray(seenRows) ? seenRows : [])].filter(Boolean))).slice(0, 300);
-  localStorage.setItem(seenKey, JSON.stringify(next));
-}
-
-function getNotifDeletedKey() {
-  return 'epur_deleted_notif_' + (currentUser?.username || currentUser?.displayName || 'guest');
-}
-
-function getDeletedNotifSet() {
-  try {
-    const raw = JSON.parse(localStorage.getItem(getNotifDeletedKey()) || '[]');
-    return new Set((Array.isArray(raw) ? raw : []).map(String).filter(Boolean));
-  } catch(e) { return new Set(); }
-}
-
-function saveDeletedNotifSet(setObj) {
-  const arr = Array.from(setObj || []).slice(0, 500);
-  localStorage.setItem(getNotifDeletedKey(), JSON.stringify(arr));
-}
-
-function rememberDeletedNotif(nid) {
-  if (!nid) return;
-  const setObj = getDeletedNotifSet();
-  setObj.add(String(nid));
-  saveDeletedNotifSet(setObj);
-}
-
-function buildNotifNid(n) {
-  if (n && n.id) return String(n.id);
-  const row = String(n?.row || '');
-  const tipe = String(n?.tipe || '');
-  const paket = String(n?.namaPaket || '');
-  const time = String(n?.createdAt || '');
-  const msg = String(n?.pesan || '').slice(0, 40);
-  return `local-${row}|${tipe}|${paket}|${time}|${msg}`;
-}
 
 async function loadNotifikasi() {
   if (!currentUser || !GAS_URL) return;
   try {
-    const ppInstansiList = currentUser.instansiList && currentUser.instansiList.length
-      ? currentUser.instansiList.join('|')
-      : (currentUser.instansi || '');
+    const url = GAS_URL + '?action=getNotifikasi'
+      + '&username=' + encodeURIComponent(currentUser.username || '')
+      + '&role='     + encodeURIComponent(currentUser.role     || '')
+      + '&instansi=' + encodeURIComponent(currentUser.instansi || '');
 
-    const common = {
-      username: currentUser.username || '',
-      role: currentUser.role || '',
-      instansi: currentUser.instansi || '',
-      instansiList: ppInstansiList,
-      displayName: currentUser.displayName || '',
-    };
+    const res = await xhrGet(url);
 
-    const queryVariants = [
-      { ...common, pejabat: currentUser.displayName || '' },
-      { ...common, pejabat: currentUser.username || '' },
-      { ...common },
-    ];
-    const actionVariants = [
-      'getNotifikasi',
-      'getNotification',
-      'getNotifications',
-      currentUser.role === 'pp' || currentUser.role === 'superadmin' ? 'getNotifikasiPP' : 'getNotifikasiOPD',
-      currentUser.role === 'pp' || currentUser.role === 'superadmin' ? 'getNotificationPP' : 'getNotificationOPD',
-    ];
-
-    const buildQuery = obj => Object.entries(obj)
-      .filter(([,v]) => String(v || '').trim() !== '')
-      .map(([k,v]) => '&' + encodeURIComponent(k) + '=' + encodeURIComponent(v))
-      .join('');
-
-    const candidateUrls = [];
-    actionVariants.forEach(action => {
-      queryVariants.forEach(q => {
-        candidateUrls.push(GAS_URL + '?action=' + action + buildQuery(q));
-      });
-    });
-
-    let res = null;
-    for (const url of candidateUrls) {
-      res = await xhrGet(url, { noCache: true });
-      const hasArray = res && (Array.isArray(res.data) || Array.isArray(res.notifikasi) || Array.isArray(res.items));
-      if (res && (res.status === 'ok' || hasArray)) break;
-    }
-
-    // Normalisasi response shape
-    let notifArr = (res && Array.isArray(res.data)) ? res.data
-      : (res && Array.isArray(res.notifikasi)) ? res.notifikasi
-      : (res && Array.isArray(res.items)) ? res.items
-      : [];
-
-    notifArr = notifArr.map(n => {
-      const serverId = n && n.id ? String(n.id) : '';
-      const nid = buildNotifNid(n);
-      return { ...n, id: serverId, __nid: nid };
-    });
-
-    // Fallback khusus PP/Superadmin: jika backend notif kosong, buat notifikasi dari data pengajuan terbaru
-    if (!notifArr.length && (currentUser.role === 'pp' || currentUser.role === 'superadmin') && Array.isArray(allData) && allData.length) {
-      const norm = v => String(v || '').toLowerCase().replace(/kota surakarta/gi,'').replace(/\s+/g,' ').trim();
-      const myInstRaw = currentUser.role === 'superadmin'
-        ? []
-        : (currentUser.instansiList && currentUser.instansiList.length ? currentUser.instansiList : [currentUser.instansi]);
-      const myInstSet = new Set(myInstRaw.map(norm).filter(Boolean));
-      const inScope = d => {
-        if (currentUser.role === 'superadmin') return true;
-        const dinas = norm(d.instansi);
-        if (!dinas) return false;
-        for (const x of myInstSet) {
-          if (dinas === x || dinas.includes(x) || x.includes(dinas)) return true;
-        }
-        return false;
-      };
-
-      const seenKey = 'epur_seen_pp_notif_' + (currentUser.username || currentUser.displayName || 'pp');
-      let seenRows = [];
-      try { seenRows = JSON.parse(localStorage.getItem(seenKey) || '[]'); } catch(e) { seenRows = []; }
-      const seenSet = new Set((Array.isArray(seenRows) ? seenRows : []).map(Number));
-
-      const fresh = allData
-        .filter(d => inScope(d))
-        .filter(d => !seenSet.has(Number(d.row)))
-        .sort((a,b) => Number(b.row || 0) - Number(a.row || 0))
-        .slice(0, 20)
-        .map(d => ({
-          id: 'fallback-' + d.row,
-          tipe: 'pengajuan_baru',
-          pesan: 'Pengajuan baru dari OPD: ' + (d.instansi || '-'),
-          namaPaket: d.namaPaket || '',
-          row: Number(d.row || 0),
-          createdAt: d.timestamp || new Date().toISOString(),
-          dibaca: false,
-        }));
-
-      if (fresh.length) notifArr = fresh.map(n => ({ ...n, id: String(n.id || ''), __nid: buildNotifNid(n) }));
-    }
-
-    const deletedSet = getDeletedNotifSet();
-    notifArr = notifArr.filter(n => !deletedSet.has(String(n.__nid || n.id || '')));
-
-    const unreadCount = (res && typeof res.unread === 'number')
-      ? res.unread
-      : notifArr.filter(n => !n.dibaca).length;
-
-    if (res && (res.status === 'ok' || notifArr.length) || notifArr.length) {
-      _notifData   = notifArr;
-      _notifUnread = unreadCount;
+    if (res && res.status === 'ok') {
+      _notifData   = res.data   || [];
+      _notifUnread = res.unread || 0;
       updateNotifBadge();
       if (_notifPanelOpen) renderNotifList();
-      // OPD: jika ada notifikasi perubahan status/perbaikan, sinkronkan data pengajuan agar status kartu ikut berubah
-      if (currentUser.role === 'opd' && !_notifSyncingData) {
-        const sig = _notifData.slice(0, 10).map(n => [n.id, n.dibaca ? 1 : 0, n.createdAt].join(':')).join('|');
-        if (sig !== _notifSyncSignature) {
-          _notifSyncSignature = sig;
-          const hasStatusNotif = _notifData.some(n => {
-            const t = String(n.tipe || '').toLowerCase();
-            return t.includes('revisi') || t.includes('diterima') || t.includes('status');
-          });
-          if (hasStatusNotif) {
-            _notifSyncingData = true;
-            try { await loadData(true); } catch(e) {}
-            _notifSyncingData = false;
-          }
-        }
-      }
     } else if (res && res.status === 'error') {
       console.warn('loadNotifikasi server error:', res.message);
     }
@@ -5088,7 +5035,6 @@ async function loadNotifikasi() {
     console.warn('loadNotifikasi fetch error:', e.message);
   }
 }
-
 
 function updateNotifBadge() {
   const badge = document.getElementById('notif-badge');
@@ -5109,7 +5055,7 @@ function toggleNotifPanel() {
   if (_notifPanelOpen) {
     panel.classList.add('open');
     if (backdrop) backdrop.style.display = 'block';
-    setNotifView(_notifView);
+    renderNotifList();
   } else {
     closeNotifPanel();
   }
@@ -5123,47 +5069,68 @@ function closeNotifPanel() {
   if (backdrop) backdrop.style.display = 'none';
 }
 
-function setNotifView(mode) {
-  _notifView = mode === 'riwayat' ? 'riwayat' : 'aktif';
-  const tabAktif = document.getElementById('notif-tab-aktif');
-  const tabRiwayat = document.getElementById('notif-tab-riwayat');
-  if (tabAktif) tabAktif.classList.toggle('active', _notifView === 'aktif');
-  if (tabRiwayat) tabRiwayat.classList.toggle('active', _notifView === 'riwayat');
-  const markAll = document.getElementById('notif-mark-all');
-  const clearBtn = document.getElementById('notif-clear-history');
-  if (markAll) markAll.style.display = _notifView === 'aktif' ? '' : 'none';
-  if (clearBtn) clearBtn.style.display = _notifView === 'riwayat' ? '' : 'none';
-  renderNotifList();
-}
-
 function renderNotifList() {
   const listEl = document.getElementById('notif-list');
   if (!listEl) return;
 
-  const source = _notifView === 'riwayat'
-    ? _notifData.filter(n => !!n.dibaca)
-    : _notifData.filter(n => !n.dibaca);
-
-  if (!source.length) {
-    listEl.innerHTML = '<div class="notif-empty">' + (_notifView === 'riwayat' ? '🗂️ Belum ada riwayat notifikasi' : '🔕 Tidak ada notifikasi aktif') + '</div>';
+  if (!_notifData.length) {
+    listEl.innerHTML = '<div class="notif-empty">🔕 Belum ada notifikasi</div>';
     return;
   }
 
-  listEl.innerHTML = source.slice(0, 50).map(n => {
-    const icon     = NOTIF_ICONS[n.tipe] || NOTIF_ICONS.default;
-    const unread   = !n.dibaca;
-    const timeAgo  = _fmtNotifTime(n.createdAt);
+  listEl.innerHTML = _notifData.slice(0, 30).map(n => {
+    const icon    = NOTIF_ICONS[n.tipe] || NOTIF_ICONS.default;
+    const unread  = !n.dibaca;
+    const timeAgo = _fmtNotifTime(n.createdAt);
     return `
-    <div class="notif-item${unread ? ' unread' : ''}" onclick="onNotifClick('${esc(n.__nid || '')}','${esc(n.tipe)}',${n.row})">
-      <div class="notif-item-icon ${esc(n.tipe)}">${icon}</div>
-      <div class="notif-item-body">
+    <div class="notif-item${unread ? ' unread' : ''}" id="notif-item-${esc(n.id)}" style="position:relative">
+      <div class="notif-item-icon ${esc(n.tipe)}" onclick="onNotifClick('${esc(n.id)}','${esc(n.tipe)}',${n.row})" style="cursor:pointer">${icon}</div>
+      <div class="notif-item-body" onclick="onNotifClick('${esc(n.id)}','${esc(n.tipe)}',${n.row})" style="cursor:pointer;flex:1">
         <div class="notif-item-pesan">${esc(n.pesan)}</div>
         <div class="notif-item-time">${timeAgo}${n.namaPaket ? ' · ' + esc(n.namaPaket.substring(0,30)) + (n.namaPaket.length > 30 ? '…' : '') : ''}</div>
       </div>
-      ${unread ? '<div class="notif-unread-dot"></div>' : ''}
-      <button class="notif-item-delete" title="Hapus notifikasi" onclick="event.stopPropagation();deleteNotifikasi('${esc(n.__nid || '')}')">🗑️</button>
+      <button onclick="event.stopPropagation();deleteOneNotif('${esc(n.id)}')" title="Hapus notifikasi"
+        style="flex-shrink:0;background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;padding:4px 6px;border-radius:4px;line-height:1;opacity:0.6;transition:opacity 0.15s"
+        onmouseover="this.style.opacity='1';this.style.color='var(--danger)'" onmouseout="this.style.opacity='0.6';this.style.color='var(--text3)'">🗑️</button>
+      ${unread ? '<div class="notif-unread-dot" style="flex-shrink:0;margin-left:0"></div>' : ''}
     </div>`;
   }).join('');
+}
+
+async function deleteOneNotif(notifId) {
+  if (!notifId) return;
+  // Hapus dari UI dulu (optimistic update)
+  const itemEl = document.getElementById('notif-item-' + notifId);
+  if (itemEl) itemEl.style.opacity = '0.4';
+  _notifData = _notifData.filter(n => n.id !== notifId);
+  _notifUnread = _notifData.filter(n => !n.dibaca).length;
+  updateNotifBadge();
+  renderNotifList();
+  // Hapus dari server
+  try {
+    await xhrGet(GAS_URL + '?action=deleteNotifikasi&notifId=' + encodeURIComponent(notifId));
+  } catch(e) { console.warn('deleteOneNotif error:', e); }
+}
+
+async function deleteAllNotif() {
+  if (!currentUser) return;
+  if (!confirm('Hapus semua notifikasi? Tindakan ini tidak dapat dibatalkan.')) return;
+  // Kosongkan UI dulu
+  _notifData   = [];
+  _notifUnread = 0;
+  updateNotifBadge();
+  renderNotifList();
+  // Hapus dari server
+  try {
+    const url = GAS_URL + '?action=deleteAllNotifikasi'
+      + '&username=' + encodeURIComponent(currentUser.username || '')
+      + '&role='     + encodeURIComponent(currentUser.role     || '')
+      + '&instansi=' + encodeURIComponent(currentUser.instansi || '');
+    const res = await xhrGet(url);
+    if (res && res.status === 'ok') {
+      showToast('🗑️ ' + (res.deleted || 0) + ' notifikasi dihapus', 'success');
+    }
+  } catch(e) { console.warn('deleteAllNotif error:', e); }
 }
 
 function _fmtNotifTime(createdAt) {
@@ -5181,26 +5148,16 @@ function _fmtNotifTime(createdAt) {
   } catch(e) { return createdAt; }
 }
 
-async function onNotifClick(notifNid, tipe, rowNum) {
+async function onNotifClick(notifId, tipe, rowNum) {
   // Tandai dibaca
-  if (notifNid) {
+  if (notifId) {
     try {
-      const n = _notifData.find(x => String(x.__nid || x.id || '') === String(notifNid));
-      if (n && n.id) {
-        const markUrls = [
-          GAS_URL + '?action=readNotifikasi&notifId=' + encodeURIComponent(n.id),
-          GAS_URL + '?action=readNotification&notifId=' + encodeURIComponent(n.id),
-        ];
-        for (const u of markUrls) {
-          const rr = await xhrGet(u, { noCache: true });
-          if (rr && (rr.status === 'ok' || rr.success === true)) break;
-        }
-      }
+      await xhrGet(GAS_URL + '?action=readNotifikasi&notifId=' + encodeURIComponent(notifId));
+      const n = _notifData.find(x => x.id === notifId);
       if (n) n.dibaca = true;
       _notifUnread = Math.max(0, _notifUnread - 1);
       updateNotifBadge();
       renderNotifList();
-      if (String(notifNid || '').startsWith('fallback-')) markFallbackNotifSeen(rowNum);
     } catch(e) {}
   }
 
@@ -5231,56 +5188,11 @@ async function onNotifClick(notifNid, tipe, rowNum) {
   }
 }
 
-async function deleteNotifikasi(notifNid, silent = false) {
-  if (!notifNid) return;
-  const deleted = _notifData.find(n => String(n.__nid || n.id || '') === String(notifNid));
-
-  if (GAS_URL && deleted && deleted.id) {
-    try {
-      const delUrls = [
-        GAS_URL + '?action=deleteNotifikasi&notifId=' + encodeURIComponent(deleted.id),
-        GAS_URL + '?action=deleteNotification&notifId=' + encodeURIComponent(deleted.id),
-      ];
-      for (const u of delUrls) {
-        const rr = await xhrGet(u, { noCache: true });
-        if (rr && (rr.status === 'ok' || rr.success === true)) break;
-      }
-    } catch(e) {}
-  }
-
-  rememberDeletedNotif(notifNid);
-  _notifData = _notifData.filter(n => String(n.__nid || n.id || '') !== String(notifNid));
-  _notifUnread = _notifData.filter(n => !n.dibaca).length;
-  if (String(notifNid || '').startsWith('fallback-')) markFallbackNotifSeen(deleted && deleted.row);
-  updateNotifBadge();
-  renderNotifList();
-  if (!silent) showToast('🗑️ Notifikasi dihapus', 'success');
-}
-
-async function clearNotifHistory() {
-  const ids = _notifData.filter(n => !!n.dibaca).map(n => n.__nid || n.id).filter(Boolean);
-  if (!ids.length) {
-    showToast('ℹ️ Riwayat notifikasi sudah kosong', 'info');
-    return;
-  }
-  for (const nid of ids) {
-    await deleteNotifikasi(nid, true);
-  }
-  showToast('✅ Riwayat notifikasi berhasil dihapus', 'success');
-}
-
 async function markAllNotifRead() {
   const unreadIds = _notifData.filter(n => !n.dibaca).map(n => n.id);
   for (const id of unreadIds) {
     try {
-      const markUrls = [
-        GAS_URL + '?action=readNotifikasi&notifId=' + encodeURIComponent(id),
-        GAS_URL + '?action=readNotification&notifId=' + encodeURIComponent(id),
-      ];
-      for (const u of markUrls) {
-        const rr = await xhrGet(u, { noCache: true });
-        if (rr && (rr.status === 'ok' || rr.success === true)) break;
-      }
+      await xhrGet(GAS_URL + '?action=readNotifikasi&notifId=' + encodeURIComponent(id));
     } catch(e) {}
   }
   _notifData.forEach(n => n.dibaca = true);
@@ -5292,10 +5204,10 @@ async function markAllNotifRead() {
 
 function startNotifWatcher() {
   stopNotifWatcher();
-  // Poll notifikasi tiap 15 detik saat user aktif agar lebih realtime
+  // Poll notifikasi tiap 30 detik saat user aktif
   _notifInterval = setInterval(() => {
     if (currentUser) loadNotifikasi();
-  }, 15000);
+  }, 30000);
 }
 
 function stopNotifWatcher() {
@@ -5358,17 +5270,28 @@ async function loadHeatmapData() {
   }
   bodyEl.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text3);font-size:13px"><div class="spinner" style="margin:0 auto 12px"></div>Memuat data heatmap...</div>';
 
+  // Helper: xhrGet dengan timeout individual agar tidak hang jika salah satu endpoint gagal
+  const safeGet = (url) => new Promise((resolve) => {
+    xhrGet(url).then(resolve).catch(() => resolve(null));
+    setTimeout(() => resolve(null), 20000); // fallback timeout 20 detik
+  });
+
   try {
-    // Ambil kedua endpoint paralel
+    // Ambil kedua endpoint paralel, masing-masing dengan fallback null jika gagal
     const [res, resKal] = await Promise.all([
-      xhrGet(GAS_URL + '?action=getHeatmapData'),
-      xhrGet(GAS_URL + '?action=getCalendarData')
+      safeGet(GAS_URL + '?action=getHeatmapData'),
+      safeGet(GAS_URL + '?action=getCalendarData')
     ]);
-    _heatmapRawData      = (res    && res.data)    ? res.data    : [];
+    _heatmapRawData        = (res    && res.data)    ? res.data    : [];
     _kalendarRawForHeatmap = (resKal && resKal.data) ? resKal.data : [];
+
+    if (_heatmapRawData.length === 0 && _kalendarRawForHeatmap.length === 0) {
+      bodyEl.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text3);font-size:13px">📭 Belum ada data heatmap. Pastikan ada data di spreadsheet.</div>';
+      return;
+    }
     renderHeatmapFiltered();
   } catch(e) {
-    bodyEl.innerHTML = '<div style="padding:20px;color:var(--danger);font-size:13px">❌ Gagal memuat data: ' + e.message + '</div>';
+    bodyEl.innerHTML = '<div style="padding:20px;color:var(--danger);font-size:13px">❌ Gagal memuat data: ' + e.message + '<br><button class="btn btn-outline btn-sm" style="margin-top:10px" onclick="loadHeatmapData()">🔄 Coba lagi</button></div>';
   }
 }
 
@@ -5478,6 +5401,19 @@ function renderHeatmap(data) {
       </td>
     </tr>`;
   });
+
+  // Tambah baris "Lihat Semua Paket" di bawah tabel jika ada lebih dari 1 pejabat
+  const canOpenDetail = !!currentUser && (currentUser.role === 'pp' || currentUser.role === 'superadmin' || currentUser.role === 'opd');
+  if (canOpenDetail && data.length > 1) {
+    html += `<tr style="border-top:2px solid var(--border);background:#f8fafc">
+      <td colspan="5" style="padding:10px 14px;text-align:center">
+        <a href="javascript:void(0)" onclick="showDashPopoutAllPejabat()"
+          style="color:var(--primary);font-size:12px;font-weight:600;text-decoration:none">
+          📋 Lihat semua paket dari semua pejabat ↗
+        </a>
+      </td>
+    </tr>`;
+  }
 
   html += '</tbody></table>';
   bodyEl.innerHTML = html;
@@ -5650,7 +5586,9 @@ function showCalHmDay(dateStr, pejabatFilter) {
   // Scope detail berdasarkan instansi user saat ini
   const role = currentUser ? currentUser.role : 'public';
   const normInst = s => String(s||'').toLowerCase().replace(/kota surakarta/gi,'').replace(/\s+/g,' ').trim();
-  const canAccessInstansi = (instansiName) => {
+
+  // canAccessInstansi: apakah user boleh KLIK dan lihat detail paket ini
+  const canAccessInstansi = (instansiName, pejabatName) => {
     if (!currentUser) return false;
     if (role === 'superadmin') return true;
     const target = normInst(instansiName);
@@ -5660,23 +5598,28 @@ function showCalHmDay(dateStr, pejabatFilter) {
       return mine === target || mine.includes(target) || target.includes(mine);
     }
     if (role === 'pp') {
+      // PP bisa klik detail paket dari instansi yang diampu atau pejabat yang sama
       const list = currentUser.instansiList && currentUser.instansiList.length
         ? currentUser.instansiList
         : (currentUser.instansi ? [currentUser.instansi] : []);
-      if (!list.length) return true;
-      return list.some(ins => {
+      if (!list.length) return true; // PP tanpa instansi = lihat semua
+      const instMatch = list.some(ins => {
         const n = normInst(ins);
         return n === target || n.includes(target) || target.includes(n);
       });
+      const pejMatch = pejabatName && currentUser.displayName &&
+        (pejabatName === currentUser.displayName);
+      return instMatch || pejMatch;
     }
     return false;
   };
 
-  // ── Sumber 1: allData (e-Purchasing) ──
+  // ── Sumber 1: allData (e-Purchasing) — tampilkan SEMUA, filter klik saja ──
   const paketLatest = {};
   allData.forEach(d => {
     if (pejabatFilter && (d.pejabat||'') !== pejabatFilter) return;
-    if (!canAccessInstansi(d.instansi)) return;
+    // PP role: tampilkan semua paket (tidak filter instansi di sini)
+    if (role === 'opd' && !canAccessInstansi(d.instansi, d.pejabat)) return;
     const key = (d.instansi||'') + '||' + (d.noRUP||d.namaPaket||'');
     if (!paketLatest[key] || d.row > paketLatest[key].row) paketLatest[key] = d;
   });
@@ -5695,7 +5638,8 @@ function showCalHmDay(dateStr, pejabatFilter) {
   // ── Sumber 2: _kalendarRawForHeatmap (Pengadaan Langsung, Tender, dll) ──
   const activeKal = (_kalendarRawForHeatmap || []).filter(item => {
     if (pejabatFilter && (item.pejabat||'') !== pejabatFilter) return false;
-    if (!canAccessInstansi(item.dinas)) return false;
+    // PP role: tampilkan semua, OPD: filter instansi
+    if (role === 'opd' && !canAccessInstansi(item.dinas, item.pejabat)) return false;
     const tM = item.tanggal_mulai ? new Date(item.tanggal_mulai) : null;
     const tA = item.tanggal_selesai ? new Date(item.tanggal_selesai) : tM;
     if (!tM || isNaN(tM)) return false;
@@ -5725,8 +5669,15 @@ function showCalHmDay(dateStr, pejabatFilter) {
 
     // E-Purchasing
     active.forEach(d => {
-      bodyHtml += `<div style="background:var(--bg);border-radius:8px;padding:10px 12px;border-left:3px solid ${COLOR[d.progres||'']||'var(--text3)'}">
-        <div style="font-size:12px;font-weight:700;color:var(--text)">${esc(d.namaPaket||'-')}</div>
+      const canClick = canAccessInstansi(d.instansi, d.pejabat);
+      const clickStyle = canClick
+        ? `cursor:pointer;` : `cursor:default;opacity:0.75;`;
+      const clickAttr = canClick
+        ? `onclick='closeDashPopout();showDetail(${JSON.stringify(d).replace(/'/g,"&#39;")})'` : '';
+      const clickHint = canClick
+        ? `<span style="color:var(--primary);font-size:10px;margin-left:4px">↗ detail</span>` : '';
+      bodyHtml += `<div style="background:var(--bg);border-radius:8px;padding:10px 12px;border-left:3px solid ${COLOR[d.progres||'']||'var(--text3)'};${clickStyle}" ${clickAttr}>
+        <div style="font-size:12px;font-weight:700;color:var(--text)">${esc(d.namaPaket||'-')}${clickHint}</div>
         <div style="font-size:11px;color:var(--text3);margin-top:3px">${esc(shortOPD(d.instansi||''))} · ${esc(d.pejabat||'-')} · ${getStatusBadge(d.progres)}</div>
       </div>`;
     });
@@ -5766,6 +5717,8 @@ loadData();
 // FIX #2: Heatmap hanya untuk user yang login
 if (currentUser) {
   setTimeout(() => loadHeatmapData(), 2000);
+  // FIX notif: load notifikasi & mulai polling juga saat restore session (page refresh)
+  setTimeout(() => { loadNotifikasi(); startNotifWatcher(); }, 1000);
 } else {
   setTimeout(() => updateHeatmapVisibility(), 500);
 }
@@ -5938,6 +5891,76 @@ function showDashPopoutOPD(opdName) {
 }
 
 // Popout: klik Pejabat Card → daftar paket yang dikelola pejabat tsb
+function showDashPopoutAllPejabat() {
+  const role     = currentUser ? currentUser.role : 'public';
+  const normInst = s => String(s||'').toLowerCase().replace(/kota surakarta/gi,'').replace(/\s+/g,' ').trim();
+  const isSuperAdmin = role === 'superadmin';
+
+  // Deduplikasi paket
+  const paketLatest = {};
+  allData.forEach(d => {
+    const key = (d.instansi||'') + '||' + (d.noRUP||d.namaPaket||'');
+    if (!paketLatest[key] || d.row > paketLatest[key].row) paketLatest[key] = d;
+  });
+  let allPaket = Object.values(paketLatest).sort((a,b) => (b.row||0) - (a.row||0));
+
+  // OPD hanya lihat instansinya sendiri
+  if (role === 'opd' && currentUser.instansi) {
+    allPaket = allPaket.filter(d => normInst(d.instansi) === normInst(currentUser.instansi));
+  }
+
+  if (!allPaket.length) {
+    openDashPopout('📋 Semua Paket', '0 paket', '<div style="text-align:center;padding:40px;color:var(--text3)">Tidak ada data</div>');
+    return;
+  }
+
+  // Kelompokkan per pejabat
+  const byPejabat = {};
+  allPaket.forEach(d => {
+    const p = d.pejabat || 'Tidak diketahui';
+    if (!byPejabat[p]) byPejabat[p] = [];
+    byPejabat[p].push(d);
+  });
+
+  const COLOR = {
+    'Selesai Pengadaan':'var(--success)','Sedang Direviu':'var(--info)',
+    'Perlu Perbaikan':'var(--warning)','Ditolak':'var(--danger)',
+    'Proses e-Purchasing':'var(--purple)','':'var(--text3)',
+  };
+
+  let html = '';
+  Object.entries(byPejabat).forEach(([pejabat, pakets]) => {
+    html += `<div style="font-size:12px;font-weight:700;color:var(--text2);padding:8px 0 4px;border-bottom:1px solid var(--border);margin-bottom:8px">
+      🏛️ ${esc(pejabat)} <span style="font-size:11px;font-weight:400;color:var(--text3)">(${pakets.length} paket)</span>
+    </div>`;
+    pakets.forEach(d => {
+      const color = COLOR[d.progres||''] || 'var(--text3)';
+      // Kontrol akses: PP hanya klik instansi sendiri, OPD hanya instansi sendiri, SuperAdmin semua
+      const canClick = isSuperAdmin ||
+        (role === 'pp' && (currentUser.role === 'pp') && (ppCanEditInstansi(d.instansi) || d.pejabat === currentUser.displayName)) ||
+        (role === 'opd' && normInst(currentUser.instansi) === normInst(d.instansi));
+
+      if (canClick) {
+        html += `<div style="background:var(--bg);border-radius:8px;padding:10px 12px;border-left:3px solid ${color};cursor:pointer;margin-bottom:6px"
+          onclick='closeDashPopout();showDetail(${JSON.stringify(d).replace(/'/g,"&#39;")})'>`;
+      } else {
+        html += `<div style="background:var(--bg);border-radius:8px;padding:10px 12px;border-left:3px solid ${color};cursor:default;margin-bottom:6px;opacity:0.7">`;
+      }
+      html += `
+        <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px">${esc(d.namaPaket||'-')}</div>
+        <div style="font-size:11px;color:var(--text3);display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          ${getStatusBadge(d.progres)}
+          <span>${esc(shortOPD(d.instansi||'-'))}</span>
+          ${canClick ? '<span style="color:var(--primary);font-size:10px">↗ klik untuk detail</span>' : ''}
+        </div>
+      </div>`;
+    });
+    html += '<div style="margin-bottom:12px"></div>';
+  });
+
+  openDashPopout('📋 Semua Paket', allPaket.length + ' paket · dikelompokkan per pejabat', html);
+}
+
 function showDashPopoutPejabat(pejabatName) {
   const role     = currentUser ? currentUser.role : 'public';
   const normInst = s => String(s||'').toLowerCase().replace(/kota surakarta/gi,'').replace(/\s+/g,' ').trim();
@@ -6111,11 +6134,8 @@ function renderOPDPengajuan() {
   const statusFil = (document.getElementById('opd-filter-status')?.value || '').trim();
   const search    = (document.getElementById('opd-search')?.value || '').toLowerCase().trim();
 
-  // Filter data hanya instansi sendiri (toleran variasi penamaan)
-  let myData = allData.filter(d => {
-    const ins = normInst(d.instansi);
-    return ins === myInst || ins.includes(myInst) || myInst.includes(ins);
-  });
+  // Filter data hanya instansi sendiri
+  let myData = allData.filter(d => normInst(d.instansi) === myInst);
 
   // Dedup per RUP — ambil baris terbaru
   const dedupMap = {};
@@ -6178,24 +6198,8 @@ function renderOPDPengajuan() {
     const statusColor = STATUS_COLORS[d.progres||''] || '#94a3b8';
     const needsAction = ['Perlu Perbaikan','Revisi Dikirim'].includes(d.progres);
     const statusDokObj = parseStatusDok(d);
-    const statusDokVals = ['kak','kertas','referensi'].map(k => statusDokObj[k] || '');
-    const adaTolak     = statusDokVals.some(v => v === 'tolak');
-    const allBelumDicek = statusDokVals.every(v => !v);
-    const showRevisi   = needsAction && (adaTolak || allBelumDicek);
-    const showDokChecklistCard = ['Sedang Direviu','Perlu Perbaikan','Revisi Dikirim','Diterima','Ditolak'].includes(d.progres || '');
-
-    const DOK_LABEL = {
-      kak: 'KAK',
-      kertas: 'Kertas Kerja',
-      referensi: 'Referensi'
-    };
-    const dokStatusHtml = ['kak','kertas','referensi'].map(k => {
-      const st = statusDokObj[k] || '';
-      const cls = st === 'ok' ? 'ok' : st === 'tolak' ? 'tolak' : st === 'revisi_dikirim' ? 'revisi_dikirim' : 'netral';
-      const icon = st === 'ok' ? '✅' : st === 'tolak' ? '❌' : st === 'revisi_dikirim' ? '📤' : '⏳';
-      const txt = st === 'ok' ? 'OK' : st === 'tolak' ? 'Perlu Revisi' : st === 'revisi_dikirim' ? 'Menunggu Cek' : 'Belum Dicek';
-      return `<span class="opd-dok-status-item ${cls}">${icon} ${DOK_LABEL[k]}: ${txt}</span>`;
-    }).join('');
+    const adaTolak     = Object.values(statusDokObj).some(v => v === 'tolak');
+    const showRevisi   = needsAction && adaTolak;
 
     return `
     <div style="background:#fff;border-radius:12px;border:1px solid ${needsAction?'#fbbf24':'var(--border)'};
@@ -6214,7 +6218,6 @@ function renderOPDPengajuan() {
           ${needsAction ? `<span style="font-size:10px;background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:99px;font-weight:700">⚠️ Perlu Tindakan</span>` : ''}
         </div>
       </div>
-      ${showDokChecklistCard ? `<div class="opd-dok-status-wrap">${dokStatusHtml}</div>` : ''}
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-outline btn-sm" onclick='showDetail(${JSON.stringify(d).replace(/'/g,"&#39;")})'>👁️ Detail</button>
         ${showRevisi ? `<button class="btn btn-sm" style="background:#f59e0b;color:#fff;border:none"
@@ -6254,6 +6257,16 @@ async function loadKalenderData() {
     }
     const res = await xhrGet(url);
     kalData = (res && res.data) ? res.data : [];
+
+    // FIX Kalender Bulanan: isi _kalendarRawForHeatmap agar event PL & Tender muncul di kalender bulanan
+    if (kalData.length > 0) {
+      _kalendarRawForHeatmap = kalData;
+      // Re-render kalender bulanan jika sedang aktif
+      if (_fcCalBulanan) {
+        _fcCalBulanan.removeAllEvents();
+        _fcCalBulanan.addEventSource(_fcBuildEvents());
+      }
+    }
 
     // FIX #3: Update judul kalender untuk OPD
     const ppName = currentUser && currentUser.role === 'opd' ? getPPForOPD() : null;
@@ -6727,13 +6740,61 @@ function toggleSpsePanel() {
 // ============================================================
 // INJECT GOOGLE CALENDAR
 // ============================================================
-function openInjectCalModal() {
+async function openInjectCalModal() {
+  if (!kalFiltered.length) { showToast('❌ Tidak ada jadwal untuk diinjek', ''); return; }
+
+  // Update count
   const countEl = document.getElementById('inject-cal-count');
   if (countEl) countEl.textContent = kalFiltered.length + ' item jadwal';
+  document.getElementById('inject-cal-event-count').textContent = kalFiltered.length;
   document.getElementById('inject-cal-error').style.display = 'none';
   document.getElementById('btn-do-inject').disabled = false;
   document.getElementById('btn-do-inject').textContent = '📆 Inject Sekarang';
   document.getElementById('inject-cal-modal').style.display = 'flex';
+
+  // Preview daftar event
+  const evPreviewEl = document.getElementById('inject-cal-event-preview');
+  if (evPreviewEl) {
+    const evHtml = kalFiltered.slice(0, 20).map(item => {
+      const tgl = item.tanggal_mulai || '-';
+      const tglS = item.tanggal_selesai || tgl;
+      return `<div style="padding:5px 0;border-bottom:1px dashed var(--border)">
+        <div style="font-weight:600;color:var(--text)">${esc(item.nama_paket || item.tahap || '-')}</div>
+        <div style="color:var(--text3);margin-top:2px">${esc(item.tahap||'')} · ${esc(item.dinas||'')} · ${tgl} s/d ${tglS}</div>
+      </div>`;
+    }).join('');
+    evPreviewEl.innerHTML = evHtml + (kalFiltered.length > 20 ? `<div style="color:var(--text3);padding-top:6px">...dan ${kalFiltered.length - 20} event lainnya</div>` : '');
+  }
+
+  // Ambil daftar email dari user list (yang sudah diload)
+  const emailPreviewEl = document.getElementById('inject-cal-email-preview');
+  if (emailPreviewEl) {
+    // Kumpulkan pejabat unik dari kalFiltered
+    const pejabatSet = [...new Set(kalFiltered.map(i => i.pejabat).filter(Boolean))];
+    if (!pejabatSet.length) {
+      emailPreviewEl.innerHTML = '<div style="color:var(--warning)">⚠️ Tidak ada data pejabat di jadwal</div>';
+    } else {
+      // Coba ambil email dari GAS
+      try {
+        const res = await xhrGet(GAS_URL + '?action=getPejabatEmails&pejabat=' + encodeURIComponent(pejabatSet.join('|')));
+        if (res && res.emailMap) {
+          const rows = pejabatSet.map(p => {
+            const email = res.emailMap[p] || '';
+            return `<div style="padding:4px 0;display:flex;gap:8px;align-items:center">
+              <span style="font-weight:600;color:var(--text);min-width:140px">${esc(p)}</span>
+              <span style="color:${email ? 'var(--success)' : 'var(--danger)'}">${email ? '✅ ' + esc(email) : '❌ Email tidak ditemukan di Mapping'}</span>
+            </div>`;
+          }).join('');
+          emailPreviewEl.innerHTML = rows;
+        } else {
+          emailPreviewEl.innerHTML = pejabatSet.map(p => `<div style="padding:3px 0">🏛️ ${esc(p)}</div>`).join('');
+        }
+      } catch(e) {
+        emailPreviewEl.innerHTML = pejabatSet.map(p => `<div style="padding:3px 0">🏛️ ${esc(p)}</div>`).join('') +
+          '<div style="color:var(--text3);margin-top:6px;font-size:11px">ℹ️ Email diambil dari sheet Mapping saat inject</div>';
+      }
+    }
+  }
 }
 
 function closeInjectCalModal() {
@@ -6753,7 +6814,8 @@ async function doInjectCalendar() {
     const res = await xhrGet(url);
     if (res && res.status === 'ok') {
       closeInjectCalModal();
-      showToast('✅ ' + (res.created||0) + ' event berhasil ditambahkan ke Google Calendar!', 'success');
+      const sentEmails = res.sentEmails ? ` · Undangan dikirim ke ${res.sentEmails} email` : '';
+      showToast('✅ ' + (res.created||0) + ' event berhasil ditambahkan ke Google Calendar!' + sentEmails, 'success', 6000);
     } else {
       errEl.style.display = 'block';
       errEl.textContent = '❌ ' + (res?.message || 'Gagal inject ke Google Calendar');
