@@ -1277,7 +1277,10 @@
     <div style="font-weight:700;color:#fff" id="nav-user-name">-</div>
     <div style="font-size:11px;color:rgba(255,255,255,0.5)" id="nav-user-role">-</div>
   </div>
-  <div class="sidebar-footer">v2025 · BPBJ Surakarta</div>
+  <div class="sidebar-footer" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+    <span>BPBJ Surakarta</span>
+    <span style="background:rgba(255,255,255,0.12);color:rgba(255,255,255,0.7);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;letter-spacing:0.5px;font-family:'DM Mono',monospace">v1-29.03.26</span>
+  </div>
 </div>
 
 <!-- MAIN -->
@@ -3622,35 +3625,45 @@ function showDetail(d) {
 let _dokChecklistState = {};
 
 function setDokStatus(key, newStatus) {
-  if (!_currentDetailData) return;
-  // Inisialisasi dari data existing jika belum
-  if (Object.keys(_dokChecklistState).length === 0 || _dokChecklistState._rowRef !== _currentDetailData.row) {
-    _dokChecklistState = { ...(parseStatusDok(_currentDetailData)), _rowRef: _currentDetailData.row };
+  // Gunakan currentEditData sebagai fallback jika _currentDetailData null (dibuka dari edit modal)
+  const activeData = _currentDetailData || currentEditData;
+  if (!activeData) return;
+  // Inisialisasi dari data existing jika belum ada atau rowRef berbeda
+  if (!_dokChecklistState._rowRef || _dokChecklistState._rowRef !== activeData.row) {
+    _dokChecklistState = { ...(parseStatusDok(activeData)), _rowRef: activeData.row };
   }
 
-  // Toggle: klik status yang sama → reset ke kosong
+  // Toggle: klik status yang sama -> reset ke kosong
   if (_dokChecklistState[key] === newStatus) {
     _dokChecklistState[key] = '';
   } else {
     _dokChecklistState[key] = newStatus;
   }
 
+  // Ambil nilai terbaru dari state (bukan parameter newStatus yang bisa sudah di-toggle)
+  const currentVal = _dokChecklistState[key];
+
   // Update UI item
   const item = document.getElementById('dci-' + key);
   if (item) {
     item.className = 'dok-checklist-item' +
-      (newStatus && _dokChecklistState[key] === 'ok'    ? ' status-ok'    :
-       newStatus && _dokChecklistState[key] === 'tolak' ? ' status-tolak' : '');
+      (currentVal === 'ok'    ? ' status-ok'    :
+       currentVal === 'tolak' ? ' status-tolak' : '');
 
     // Update icon
     const iconEl = item.querySelector('.dok-checklist-icon');
-    if (iconEl) iconEl.textContent = _dokChecklistState[key] === 'ok' ? '✅' : _dokChecklistState[key] === 'tolak' ? '❌' : '📄';
+    if (iconEl) iconEl.textContent = currentVal === 'ok' ? '✅' : currentVal === 'tolak' ? '❌' : '📄';
 
     // Update button active state
     const btnOk    = item.querySelector('.dok-btn-ok');
     const btnTolak = item.querySelector('.dok-btn-tolak');
-    if (btnOk)    btnOk.className    = 'dok-btn-ok'    + (_dokChecklistState[key] === 'ok'    ? ' active' : '');
-    if (btnTolak) btnTolak.className = 'dok-btn-tolak' + (_dokChecklistState[key] === 'tolak' ? ' active' : '');
+    if (btnOk)    btnOk.className    = 'dok-btn-ok'    + (currentVal === 'ok'    ? ' active' : '');
+    if (btnTolak) btnTolak.className = 'dok-btn-tolak' + (currentVal === 'tolak' ? ' active' : '');
+
+    // Animasi feedback
+    item.style.transition = 'transform 0.15s ease';
+    item.style.transform  = 'scale(1.02)';
+    setTimeout(function() { item.style.transform = ''; }, 150);
   }
 }
 
@@ -4171,10 +4184,18 @@ async function saveEdit() {
   const catatan = (document.getElementById('edit-catatan')?.value || '').trim();
   if (!status) { showToast('⚠️ Pilih status progres terlebih dahulu','error'); return; }
 
+  // Animasi tombol simpan
+  const saveBtn = document.querySelector('#modal-footer .btn-success');
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px"><span style="width:14px;height:14px;border:2px solid rgba(255,255,255,0.4);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block"></span> Menyimpan...</span>';
+  }
+
   // Catatan wajib kecuali status Diterima
   if (!catatan && !['Diterima'].includes(status)) {
     showToast('⚠️ Catatan wajib diisi untuk status: ' + status, 'error');
     document.getElementById('edit-catatan')?.focus();
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '💾 Simpan Perubahan'; }
     return;
   }
 
@@ -4222,6 +4243,17 @@ async function saveEdit() {
   // Optimistic update — langsung update tampilan
   const idx = allData.findIndex(d => d.row === currentEditData.row);
   if (idx !== -1) { allData[idx].progres = status; allData[idx].catatan = catatan; }
+
+  // Animasi sukses pada tombol sebelum tutup modal
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.style.background = 'var(--success)';
+    saveBtn.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px">✅ Tersimpan!</span>';
+    saveBtn.style.transform = 'scale(1.04)';
+    saveBtn.style.transition = 'transform 0.2s ease, background 0.2s ease';
+  }
+
+  await new Promise(r => setTimeout(r, 500));
 
   closeModal();
   _dokChecklistState = {};
