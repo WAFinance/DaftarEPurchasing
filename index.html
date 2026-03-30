@@ -890,6 +890,120 @@
     .charts-row { grid-template-columns: 1fr; }
   }
 
+  /* ═══════════════════════════════════════════════════
+     MOBILE — layar <= 600px
+     Sidebar disembunyikan, bottom nav bar muncul
+  ═══════════════════════════════════════════════════ */
+  @media (max-width: 600px) {
+    .sidebar { display: none !important; }
+    .main { margin-left: 0; padding-bottom: 68px; }
+
+    /* Topbar mobile */
+    .topbar {
+      padding: 10px 14px;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .topbar-title { font-size: 14px; }
+    .topbar-sub { font-size: 11px; }
+    .topbar-actions { gap: 6px; flex-wrap: wrap; }
+    #refresh-timestamp { display: none; }
+
+    /* Page padding */
+    .page { padding: 14px 12px; }
+
+    /* Stats grid */
+    .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .stat-card { padding: 14px; }
+
+    /* Table — scroll horizontal */
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    table { min-width: 560px; }
+
+    /* Modal full-width */
+    .modal { width: calc(100vw - 24px) !important; max-width: 100% !important; margin: 12px; border-radius: 14px; }
+    .modal-body { max-height: 65vh; }
+
+    /* Form modal */
+    #form-modal-overlay .modal { width: calc(100vw - 24px) !important; }
+
+    /* Hero card */
+    .hero-card { flex-direction: column; gap: 12px; padding: 16px; }
+    .hero-title { font-size: 16px; }
+    .hero-sub { font-size: 12px; }
+
+    /* Charts */
+    .charts-row { grid-template-columns: 1fr; gap: 12px; }
+
+    /* Topbar user info — kompak */
+    #topbar-user { font-size: 11px; padding: 4px 8px; }
+    #topbar-user-label { max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* Upload zone */
+    .upload-zone { padding: 16px 10px; }
+
+    /* Notif panel */
+    .notif-panel { width: calc(100vw - 24px); right: 12px; }
+
+    /* Sembunyikan sidebar footer versi di mobile */
+    .sidebar-footer { display: none; }
+  }
+
+  /* Bottom navigation bar — mobile only */
+  .mobile-bottom-nav {
+    display: none;
+  }
+  @media (max-width: 600px) {
+    .mobile-bottom-nav {
+      display: flex;
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      height: 60px;
+      background: var(--primary);
+      z-index: 90;
+      box-shadow: 0 -2px 12px rgba(30,64,175,0.18);
+      align-items: stretch;
+    }
+    .mob-nav-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      background: none;
+      border: none;
+      color: rgba(255,255,255,0.6);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 10px;
+      font-weight: 500;
+      cursor: pointer;
+      padding: 6px 4px;
+      transition: all 0.15s;
+    }
+    .mob-nav-item:active { background: rgba(255,255,255,0.1); }
+    .mob-nav-item.active { color: #fff; }
+    .mob-nav-item.active .mob-nav-icon { background: rgba(255,255,255,0.18); border-radius: 8px; }
+    .mob-nav-icon { font-size: 18px; width: 32px; height: 24px; display: flex; align-items: center; justify-content: center; }
+    .mob-nav-cta {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      background: var(--accent);
+      border: none;
+      color: #78350f;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      cursor: pointer;
+      padding: 6px 4px;
+    }
+    .mob-nav-cta .mob-nav-icon { font-size: 20px; }
+  }
+
   .text-ellipsis { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
   .link-btn { background: none; border: none; color: var(--primary); cursor: pointer; font-size: 13px; text-decoration: underline; font-family: inherit; }
   .link-btn:hover { color: #1d4ed8; }
@@ -1282,6 +1396,38 @@
     <span style="background:rgba(255,255,255,0.12);color:rgba(255,255,255,0.7);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;letter-spacing:0.5px;font-family:'DM Mono',monospace">v1-29.03.26</span>
   </div>
 </div>
+
+<!-- MOBILE BOTTOM NAV -->
+<nav class="mobile-bottom-nav" id="mobile-bottom-nav">
+  <button class="mob-nav-item active" id="mob-nav-dashboard" onclick="showPage('dashboard');setMobNav('dashboard')">
+    <div class="mob-nav-icon">🏠</div>
+    <span>Dashboard</span>
+  </button>
+  <button class="mob-nav-item" id="mob-nav-data" onclick="showPage('data');setMobNav('data')" style="display:none">
+    <div class="mob-nav-icon">📋</div>
+    <span>Pengajuan</span>
+  </button>
+  <button class="mob-nav-item" id="mob-nav-pengajuan-saya" onclick="showPage('pengajuan-opd');setMobNav('pengajuan-saya')" style="display:none">
+    <div class="mob-nav-icon">📋</div>
+    <span>Saya</span>
+  </button>
+  <button class="mob-nav-cta" id="mob-nav-cta" onclick="openFormModal()" style="display:none">
+    <div class="mob-nav-icon">➕</div>
+    <span>Pengajuan</span>
+  </button>
+  <button class="mob-nav-item" id="mob-nav-kalender" onclick="showPage('kalender');setMobNav('kalender')">
+    <div class="mob-nav-icon">📅</div>
+    <span>Kalender</span>
+  </button>
+  <button class="mob-nav-item" id="mob-nav-login" onclick="openPublicLoginModal('pp')">
+    <div class="mob-nav-icon">🔑</div>
+    <span>Login</span>
+  </button>
+  <button class="mob-nav-item" id="mob-nav-logout" onclick="doAppLogout()" style="display:none;color:rgba(255,120,120,0.85)">
+    <div class="mob-nav-icon">🚪</div>
+    <span>Logout</span>
+  </button>
+</nav>
 
 <!-- MAIN -->
 <div class="main">
@@ -2342,19 +2488,35 @@ function _forceExpiredLogout() {
   updateNavForUser();
   showPage('dashboard');
   setTimeout(() => renderDashboard(), 100);
-  // Tampilkan modal session expired
-  const msg = document.createElement('div');
-  msg.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center';
-  msg.innerHTML = `<div style="background:#fff;border-radius:16px;padding:32px 40px;text-align:center;max-width:360px;box-shadow:0 20px 40px rgba(0,0,0,0.3)">
-    <div style="font-size:48px;margin-bottom:12px">⏰</div>
-    <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px">Sesi Berakhir</div>
-    <div style="font-size:13px;color:var(--text3);margin-bottom:20px">Sesi login Anda telah habis setelah 10 menit tidak aktif. Silakan login kembali.</div>
-    <button onclick="this.closest('div[style]').remove();openPublicLoginModal('pp')"
-      style="background:var(--primary);color:#fff;border:none;border-radius:8px;padding:10px 28px;font-size:14px;font-weight:700;cursor:pointer">
-      🔓 Login Kembali
-    </button>
-  </div>`;
-  document.body.appendChild(msg);
+  // Tampilkan overlay session expired — pakai ID agar tidak duplikat & tombol selalu bisa diklik
+  let overlay = document.getElementById('session-expired-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'session-expired-overlay';
+    document.body.appendChild(overlay);
+  }
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.78);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.innerHTML = `
+    <div style="background:#fff;border-radius:16px;padding:32px 32px;text-align:center;max-width:360px;width:100%">
+      <div style="font-size:44px;margin-bottom:12px">⏰</div>
+      <div style="font-size:17px;font-weight:700;color:#0f172a;margin-bottom:8px">Sesi Berakhir</div>
+      <div style="font-size:13px;color:#64748b;margin-bottom:24px;line-height:1.6">Sesi login habis setelah 10 menit tidak aktif. Silakan login kembali.</div>
+      <button id="btn-relogin-pp" style="background:#1e40af;color:#fff;border:none;border-radius:8px;padding:11px 0;font-size:14px;font-weight:700;cursor:pointer;width:100%;margin-bottom:8px">
+        🔑 Login PP / Admin
+      </button>
+      <button id="btn-relogin-opd" style="background:#059669;color:#fff;border:none;border-radius:8px;padding:11px 0;font-size:14px;font-weight:600;cursor:pointer;width:100%">
+        🏢 Login OPD
+      </button>
+    </div>`;
+  // Event listener langsung — hindari inline onclick yang bisa gagal saat overlay aktif
+  document.getElementById('btn-relogin-pp').onclick = function() {
+    document.getElementById('session-expired-overlay').style.display = 'none';
+    openPublicLoginModal('pp');
+  };
+  document.getElementById('btn-relogin-opd').onclick = function() {
+    document.getElementById('session-expired-overlay').style.display = 'none';
+    openPublicLoginModal('opd');
+  };
 }
 
 // Simpan user list dari GAS (diisi saat loadData)
@@ -2585,9 +2747,54 @@ function updateNavForUser() {
 
   _updateKalenderAuthState();
   updateHeatmapVisibility();
+  updateMobileNav();
 
   const adminResetCard = document.getElementById('settings-admin-resetpwd-card');
   if (adminResetCard) adminResetCard.style.display = role === 'superadmin' ? 'block' : 'none';
+}
+
+// Update mobile bottom nav sesuai role
+function updateMobileNav() {
+  const role = currentUser ? currentUser.role : 'public';
+  const isLoggedIn = !!currentUser;
+  const isOPD = role === 'opd';
+  const isPP  = role === 'pp' || role === 'superadmin';
+
+  const el = (id) => document.getElementById(id);
+  const showEl = (id) => { const e = el(id); if(e) e.style.display = ''; };
+  const hideEl = (id) => { const e = el(id); if(e) e.style.display = 'none'; };
+
+  if (isLoggedIn) {
+    hideEl('mob-nav-login');
+    showEl('mob-nav-logout');
+  } else {
+    showEl('mob-nav-login');
+    hideEl('mob-nav-logout');
+  }
+
+  if (isPP) {
+    showEl('mob-nav-data');
+    hideEl('mob-nav-pengajuan-saya');
+    hideEl('mob-nav-cta');
+  } else if (isOPD) {
+    hideEl('mob-nav-data');
+    showEl('mob-nav-pengajuan-saya');
+    showEl('mob-nav-cta');
+  } else {
+    hideEl('mob-nav-data');
+    hideEl('mob-nav-pengajuan-saya');
+    hideEl('mob-nav-cta');
+  }
+}
+
+// Set active state pada mobile bottom nav
+function setMobNav(page) {
+  ['dashboard','data','pengajuan-saya','kalender'].forEach(function(p) {
+    const el = document.getElementById('mob-nav-' + p);
+    if (el) el.classList.remove('active');
+  });
+  const active = document.getElementById('mob-nav-' + page);
+  if (active) active.classList.add('active');
 }
 
 // FIX #2: Kontrol visibilitas heatmap berdasarkan login state
